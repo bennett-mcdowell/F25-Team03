@@ -12,7 +12,7 @@ TODO: Guide users through getting your code up and running on their own system. 
 1. Download Docker desktop
 2. Download Docker Container extension in vscode
 3. Run this command to build the docker container: docker build -t myapp .
-4. Run this command to run docker file, this will host the frontend on port 5000: docker run -p 5000:5000 my_product_app
+4. Run this command to run docker file, this will host the frontend on port 5000: docker run -p 5000:5000 myapp
 5. Go to http://localhost:5000/ to see front end live on dev
 
 # Build and Test
