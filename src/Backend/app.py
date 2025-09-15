@@ -11,7 +11,8 @@ sample_about_data = {
     "version_number": "1",
     "release_date": "9/16/2025",
     "product_name": "Driver Incentive Program",
-    "product_description": "product description"
+    "product_description": "product description",
+    "contact_details": "contact details"
 }
 
 # Sample product data
@@ -48,7 +49,7 @@ def get_about_data():
 # Serve the about HTML page
 @app.route('/about')
 def about_page():
-    return render_template('about.html', product=sample_about_data)
+    return render_template('about.html')
 
 # Serve the index HTML page
 @app.route('/')

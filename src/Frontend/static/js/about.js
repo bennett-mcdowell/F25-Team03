@@ -12,6 +12,7 @@ fetch('/api/about')
         <tr><th>Release Date</th><td>${data.release_date}</td></tr>
         <tr><th>Product Name</th><td>${data.product_name}</td></tr>
         <tr><th>Product Description</th><td>${data.product_description}</td></tr>
+        <tr><th>Contact Details</th><td>${data.contact_details}</td></tr>
       </table>
     `;
   })
