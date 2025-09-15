@@ -1,0 +1,21 @@
+<!-- templates/index.html -->
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>{{ product.name }}</title>
+    <style>
+        body { font-family: Arial, sans-serif; margin: 40px; }
+        .product { border: 1px solid #ccc; padding: 20px; border-radius: 8px; max-width: 400px; }
+        h1 { color: #333; }
+    </style>
+</head>
+<body>
+    <div class="product">
+        <h1>{{ product.name }}</h1>
+        <p>{{ product.description }}</p>
+        <strong>Price: {{ product.price }}</strong>
+    </div>
+</body>
+</html>
