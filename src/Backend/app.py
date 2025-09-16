@@ -1,19 +1,17 @@
 from flask import Flask, jsonify, render_template
-#import mysql.connector
-#from mysql.connector import Error
+from flask_caching import Cache
+import mysql.connector
+from mysql.connector import Error
 from flask_cors import CORS
+from dotenv import load_dotenv
+import os
 
+# App initialization
 app = Flask(__name__, static_folder='../Frontend/static', template_folder='../Frontend/templates')
 CORS(app)
+load_dotenv()
 
-sample_about_data = {
-    "team_number": "Team 03",
-    "version_number": "1",
-    "release_date": "9/16/2025",
-    "product_name": "Driver Incentive Program",
-    "product_description": "product description",
-    "contact_details": "contact details"
-}
+cache = Cache(app, config={'CACHE_TYPE': 'SimpleCache'})
 
 # Sample product data
 product = {
@@ -23,15 +21,12 @@ product = {
 }
 
 def get_about_data():
-    return sample_about_data
-
-    """
     try:
         connection = mysql.connector.connect(
-            host='',
-            database='',
-            user='',
-            password=''
+            host=os.getenv('DB_HOST'),
+            database=os.getenv('DB_NAME'),
+            user=os.getenv('DB_USER'),
+            password=os.getenv('DB_PASSWORD')
         )
         if connection.is_connected():
             cursor = connection.cursor(dictionary=True)
@@ -44,12 +39,16 @@ def get_about_data():
     finally:
         if 'connection' in locals() and connection.is_connected():
             connection.close()
-    """
 
 # Serve the about HTML page
 @app.route('/about')
 def about_page():
     return render_template('about.html')
+
+# Serve the login HTML page
+@app.route('/login')
+def login_page():
+    return render_template('login.html')
 
 # Serve the index HTML page
 @app.route('/')
@@ -58,6 +57,7 @@ def home():
 
 # API endpoint for about data
 @app.route('/api/about', methods=['GET'])
+@cache.cached(timeout=300)
 def about_api():
     data = get_about_data()
     if data:
