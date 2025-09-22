@@ -1,31 +1,21 @@
-<!-- templates/index.html -->
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{{ product.name }}</title>
-    <style>
-        body { font-family: Arial, sans-serif; margin: 40px; }
-        .product { border: 1px solid #ccc; padding: 20px; border-radius: 8px; max-width: 400px; }
-        h1 { color: #333; }
-    </style>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Login</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/login.css') }}">
 </head>
 <body>
-    <div class="product">
-        {% if api_data.error %}
-            <h1>Error</h1>
-            <p>{{ api_data.error }}</p>
-            <strong>Status: Failed</strong>
-        {% elif api_data.itemSummaries %}
-            <h1>{{ api_data.itemSummaries[0].title }}</h1>
-            <p>{{ api_data.itemSummaries[0].condition }}</p>
-            <strong>Price: {{ api_data.itemSummaries[0].price.currency }} {{ api_data.itemSummaries[0].price.value }}</strong>
-        {% else %}
-            <h1>No Data</h1>
-            <p>Unexpected API response</p>
-            <strong>Raw: {{ api_data }}</strong>
-        {% endif %}
-    </div>
+	<div class="login-container">
+		<h2>Login</h2>
+		<div id="error" class="error-message"></div>
+		<form id="loginForm" autocomplete="off">
+			<input type="text" id="username" name="username" placeholder="Username">
+			<input type="password" id="password" name="password" placeholder="Password">
+			<button type="submit">Login</button>
+		</form>
+	</div>
+	<script src="{{ url_for('static', filename='js/login.js') }}"></script>
 </body>
 </html>
