@@ -21,9 +21,13 @@ def register():
     country = data.get('country')
     password = data.get('password')
     username = data.get('username')
+    usertype = data.get('usertype')
 
-    if not all([first_name, last_name, email, ssn, city, state, country, password, username]):
-        return jsonify({'error': 'Missing required fields'}), 400
+    type_map = {'admin': 1, 'sponsor': 2, 'driver': 3}
+    type_id = type_map.get(usertype)
+
+    if not all([first_name, last_name, email, ssn, city, state, country, password, username, usertype]) or type_id is None:
+        return jsonify({'error': 'Missing required fields or invalid user type'}), 400
 
     hashed_password = generate_password_hash(password)
     try:
@@ -33,7 +37,7 @@ def register():
         # Insert into user table
         cursor.execute(
             "INSERT INTO user (first_name, last_name, email, ssn, city, state, country, type_id) VALUES (%s, %s, %s, %s, %s, %s, %s, %s)",
-            (first_name, last_name, email, ssn, city, state, country, 1)
+            (first_name, last_name, email, ssn, city, state, country, type_id)
         )
         user_id = cursor.lastrowid
 
@@ -42,6 +46,26 @@ def register():
             "INSERT INTO user_credentials (user_id, username, password) VALUES (%s, %s, %s)",
             (user_id, username, hashed_password)
         )
+
+        # Insert into role-specific table
+        if type_id == 1:
+            # Admin:
+            cursor.execute(
+                "INSERT INTO admin (user_id, admin_permissions) VALUES (%s, %s)",
+                (user_id, 0)
+            )
+        elif type_id == 2:
+            # Sponsor:
+            cursor.execute(
+                "INSERT INTO sponsor (user_id, name, description) VALUES (%s, %s, %s)",
+                (user_id, None, None)
+            )
+        elif type_id == 3:
+            # Driver:
+            cursor.execute(
+                "INSERT INTO driver (user_id, balance, sponsor_id) VALUES (%s, %s, %s)",
+                (user_id, 0.00, None)
+            )
 
         conn.commit()
         return jsonify({'message': 'User registered successfully'}), 201
