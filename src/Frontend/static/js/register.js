@@ -14,7 +14,7 @@ document.addEventListener('DOMContentLoaded', function () {
             const password = document.getElementById('password').value.trim();
             const errorDiv = document.getElementById('error');
 
-            if (!firstname || !lastname || !email || !ssn || !city || !state || !country || !username || !password) {
+            if (!firstname || !lastname || !email || !ssn || !city || !state || !country || !username || !password || !usertype) {
                 errorDiv.textContent = 'Please fill out all fields.';
                 errorDiv.style.display = 'block';
                 return;
@@ -33,7 +33,8 @@ document.addEventListener('DOMContentLoaded', function () {
                         state,
                         country,
                         username,
-                        password
+                        password,
+                        usertype
                     })
                 });
                 const data = await response.json();
