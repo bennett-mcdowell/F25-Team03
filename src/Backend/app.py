@@ -5,6 +5,8 @@ from mysql.connector import Error
 from flask_cors import CORS
 from dotenv import load_dotenv
 import os
+import requests
+import base64
 
 # App initialization
 app = Flask(__name__, static_folder='../Frontend/static', template_folder='../Frontend/templates')
@@ -40,6 +42,64 @@ def get_about_data():
         if 'connection' in locals() and connection.is_connected():
             connection.close()
 
+def get_raw_ebay_data():
+    """Get raw eBay API data"""
+    client_id = os.getenv('EBAY_CLIENT_ID')
+    client_secret = os.getenv('EBAY_CLIENT_SECRET')
+    
+    if not client_id or not client_secret:
+        return {"error": "eBay credentials not found in .env file"}
+    
+    try:
+        # Get token
+        token_url = "https://api.sandbox.ebay.com/identity/v1/oauth2/token"
+        credentials = f"{client_id}:{client_secret}"
+        encoded_credentials = base64.b64encode(credentials.encode()).decode()
+        
+        headers = {
+            'Content-Type': 'application/x-www-form-urlencoded',
+            'Authorization': f'Basic {encoded_credentials}'
+        }
+        
+        data = {
+            'grant_type': 'client_credentials',
+            'scope': 'https://api.ebay.com/oauth/api_scope'
+        }
+        
+        response = requests.post(token_url, headers=headers, data=data)
+        
+        if response.status_code != 200:
+            return {"error": f"Token failed: {response.status_code}"}
+        
+        token = response.json().get('access_token')
+        
+        # Get products
+        search_url = "https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search"
+        
+        search_headers = {
+            'Authorization': f'Bearer {token}',
+            'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US'
+        }
+        
+        params = {
+            'q': 'electronics',
+            'limit': 6,
+            'filter': 'price:[1..1000]'
+        }
+        
+        search_response = requests.get(search_url, headers=search_headers, params=params)
+        
+        if search_response.status_code == 200:
+            # Return the raw JSON response
+            raw_data = search_response.json()
+            print(f"Raw eBay data: {raw_data}")  # Debug print
+            return raw_data
+        else:
+            return {"error": f"Search failed: {search_response.status_code}"}
+    
+    except Exception as e:
+        return {"error": str(e)}
+
 # Serve the about HTML page
 @app.route('/about')
 def about_page():
@@ -53,7 +113,11 @@ def login_page():
 # Serve the index HTML page
 @app.route('/')
 def home():
-    return render_template('index.html', product=product)
+    # Get raw API data and put it in a variable
+    ebay_api_response = get_raw_ebay_data()
+    
+    # Pass the raw variable directly to the template
+    return render_template('index.html', api_data=ebay_api_response)
 
 # API endpoint for about data
 @app.route('/api/about', methods=['GET'])
@@ -66,4 +130,4 @@ def about_api():
         return jsonify({'error': 'No data found'}), 404
 
 if __name__ == '__main__':
-    app.run(debug=True, host="0.0.0.0", port=5000) 
+    app.run(debug=True, host="0.0.0.0", port=5000)
