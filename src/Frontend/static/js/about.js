@@ -19,3 +19,8 @@ fetch('/api/about')
   .catch(() => {
     document.getElementById('about-data').innerHTML = '<p>Could not load about data.</p>';
   });
+
+  //Home page
+  document.getElementById("homeBtn").addEventListener("click", () => {
+    window.location.href = "/home";
+  });

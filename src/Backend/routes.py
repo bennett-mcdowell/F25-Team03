@@ -82,6 +82,10 @@ def about_page():
 def login_page():
     return render_template('login.html')
 
+@routes_bp.route('/home')
+def home_page():
+    return render_template('home.html')
+
 @routes_bp.route('/api/about', methods=['GET'])
 def about_api():
     data = get_about_data()

@@ -7,6 +7,13 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/about.css') }}">
 </head>
 <body>
+    <!-- Navigation -->
+    <nav class="navbar">
+        <div class="logo">About Page</div>
+        <ul class="nav-links">
+        <li><a href="#" id="homeBtn">Home</a></li>
+        </ul>
+    </nav>
     <div class="container"> 
         {% if api_data %}
             <!-- eBay Data Display -->
