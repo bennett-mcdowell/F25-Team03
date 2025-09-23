@@ -12,14 +12,16 @@ document.addEventListener('DOMContentLoaded', function () {
             const country = document.getElementById('country').value.trim();
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
+            const sponsor = document.getElementById('sponsor').value.trim();
             const errorDiv = document.getElementById('error');
+            
 
-            if (!firstname || !lastname || !email || !ssn || !city || !state || !country || !username || !password || !usertype) {
+            if (!firstname || !lastname || !email || !ssn || !city || !state || !country || !username || !password || !sponsor) {
                 errorDiv.textContent = 'Please fill out all fields.';
                 errorDiv.style.display = 'block';
                 return;
             }
-
+            
             try {
                 const response = await fetch('/api/register', {
                     method: 'POST',
@@ -34,7 +36,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         country,
                         username,
                         password,
-                        usertype
+                        sponsor
                     })
                 });
                 const data = await response.json();
