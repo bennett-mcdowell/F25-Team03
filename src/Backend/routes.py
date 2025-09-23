@@ -64,7 +64,11 @@ def get_raw_ebay_data():
         return {"error": str(e)}
 
 @routes_bp.route('/')
-def home():
+def register_page():
+    return render_template('register.html')
+
+@routes_bp.route('/market')
+def market():
     # Get raw eBay data
     ebay_api_response = get_raw_ebay_data()
     # Pass to about.html template
@@ -78,10 +82,6 @@ def about_page():
 def login_page():
     return render_template('login.html')
 
-@routes_bp.route('/register')
-def register_page():
-    return render_template('register.html')
-
 @routes_bp.route('/api/about', methods=['GET'])
 def about_api():
     data = get_about_data()
@@ -90,6 +90,6 @@ def about_api():
     else:
         return jsonify({'error': 'No data found'}), 404
     
-@routes_bp.route('/api/register', methods=['POST'])
-def register_api():
-    return jsonify({'message': 'User registered successfully'}), 201
+# @routes_bp.route('/api/register', methods=['POST'])
+# def register_api():
+#     return jsonify({'message': 'User registered successfully'}), 201
