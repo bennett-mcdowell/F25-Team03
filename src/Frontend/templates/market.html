@@ -3,13 +3,13 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if api_data %}eBay Products{% else %}About Page{% endif %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/about.css') }}">
+    <title>{% if api_data %}eBay Products{% else %}{% endif %}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/market.css') }}">
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar">
-        <div class="logo">About Page</div>
+        <div class="logo">Market Page</div>
         <ul class="nav-links">
         <li><a href="#" id="homeBtn">Home</a></li>
         </ul>
@@ -41,7 +41,7 @@
             <div id="about-data">
                 <p>Loading...</p>
             </div>
-            <script src="{{ url_for('static', filename='js/about.js') }}"></script>
+            <script src="{{ url_for('static', filename='js/market.js') }}"></script>
         {% endif %}
     </div>
 </body>

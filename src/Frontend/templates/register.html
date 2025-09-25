@@ -1,0 +1,29 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+	<meta charset="UTF-8">
+	<meta name="viewport" content="width=device-width, initial-scale=1.0">
+	<title>Login</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
+</head>
+<body>
+	<div class="register-container">
+		<h2>Register</h2>
+		<div id="error" class="error-message"></div>
+		<form id="registerForm" autocomplete="off">
+			<input type="text" id="firstname" name="firstname" placeholder="First Name">
+			<input type="text" id="lastname" name="lastname" placeholder="Last Name">
+			<input type="text" id="email" name="email" placeholder="Email">
+			<input type="text" id="ssn" name="ssn" placeholder="SSN">
+			<input type="text" id="city" name="city" placeholder="City">
+			<input type="text" id="state" name="state" placeholder="State">
+			<input type="text" id="country" name="country" placeholder="Country">
+			<input type="text" id="username" name="username" placeholder="Username">
+			<input type="password" id="password" name="password" placeholder="Password">
+			<input type="text" id="sponsor" name="sponsor" placeholder="Sponsor Code">
+			<button type="submit">Register</button>
+		</form>
+	</div>
+	<script src="{{ url_for('static', filename='js/register.js') }}"></script>
+</body>
+</html>
