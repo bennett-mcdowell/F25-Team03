@@ -4,9 +4,6 @@ from flask import Flask
 from flask_caching import Cache
 from flask_cors import CORS
 from dotenv import load_dotenv
-import base64
-import os
-
 
 # ------------------------------
 # Logging setup (stdout + optional file)
