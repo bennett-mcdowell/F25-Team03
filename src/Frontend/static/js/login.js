@@ -24,7 +24,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         localStorage.setItem('jwt', data.token);
                     }
                     alert('Login successful!');
-                    window.location.href = '/about'; // redirect after login
+                    window.location.href = '/home'; // redirect after login
                 } else {
                     errorDiv.textContent = data.error || 'Login failed.';
                     errorDiv.style.display = 'block';

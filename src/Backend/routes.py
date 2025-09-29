@@ -3,6 +3,7 @@ from utils.db import get_about_data
 import os
 import requests
 import base64
+from auth import token_required
 
 routes_bp = Blueprint('routes', __name__)
 
@@ -64,8 +65,8 @@ def get_raw_ebay_data():
         return {"error": str(e)}
 
 @routes_bp.route('/')
-def register_page():
-    return render_template('register.html')
+def login_page():
+    return render_template('login.html')
 
 @routes_bp.route('/market')
 def market():
@@ -78,13 +79,21 @@ def market():
 def about_page():
     return render_template('about.html')
 
-@routes_bp.route('/login')
+""" @routes_bp.route('/login')
 def login_page():
-    return render_template('login.html')
+    return render_template('login.html') """
+
+@routes_bp.route('/register')
+def register_page():
+    return render_template('register.html')
 
 @routes_bp.route('/home')
 def home_page():
     return render_template('home.html')
+
+@routes_bp.route('/passwordreset')
+def password_reset_page():
+    return render_template('passwordreset.html')
 
 @routes_bp.route('/api/about', methods=['GET'])
 def about_api():

@@ -43,7 +43,7 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (response.ok) {
                     errorDiv.style.display = 'none';
                     alert('Registration successful! You can now log in.');
-                    window.location.href = '/login';
+                    window.location.href = '/';
                 } else {
                     errorDiv.textContent = data.error || 'Registration failed.';
                     errorDiv.style.display = 'block';
