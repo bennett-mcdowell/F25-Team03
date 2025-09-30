@@ -225,3 +225,61 @@ def login():
         if conn:
             conn.close()
             logger.debug("DB connection closed (login)")
+
+@auth_bp.route('/passwordreset', methods=['POST'])
+def password_reset():
+    data = request.get_json()
+    username = data.get('username')
+    newpassword = data.get('newpassword')
+
+    if not username or not newpassword:
+        return jsonify({'error': 'Missing username or new password'}), 400
+
+    conn = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor()
+
+        _log_db_identity(cur)
+
+        hashed_password = generate_password_hash(newpassword)
+
+        _exec(cur, "UPDATE user_credentials SET password=%s WHERE username=%s",
+              (hashed_password, username), label="update password")
+        if cur.rowcount == 0:
+            return jsonify({'error': 'User not found'}), 404
+        
+        #_exec(cur, ) # log the password reset action
+
+
+        conn.commit()
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logger.error(f"Error in /api/passwordreset: {e}\n{traceback.format_exc()}")
+        return jsonify({'error': 'Password reset failed'}), 500
+    finally:
+        if conn:
+            conn.close()
+            logger.debug("DB connection closed (password reset)")
+
+    return jsonify({'success': True, 'message': 'Password reset successfully'}), 200
+
+# To protect api endpoints
+def token_required(f):
+    def wrapper(*args, **kwargs):
+        token = None
+        if 'Authorization' in request.headers:
+            auth_header = request.headers['Authorization']
+            if auth_header.startswith('Bearer '):
+                token = auth_header.split(' ')[1]
+        if not token:
+            return jsonify({'error': 'Token is missing!'}), 401
+        try:
+            secret = os.getenv('JWT_SECRET', 'dev_secret')
+            jwt.decode(token, secret, algorithms=['HS256'])
+        except Exception:
+            return jsonify({'error': 'Token is invalid!'}), 401
+        return f(*args, **kwargs)
+    wrapper.__name__ = f.__name__
+    return wrapper

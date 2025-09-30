@@ -54,6 +54,7 @@ from auth import auth_bp
 load_dotenv()
 configure_logging()  # <<— initialize logging before anything logs
 
+
 app = Flask(__name__, static_folder='../Frontend/static', template_folder='../Frontend/templates')
 CORS(app)
 
