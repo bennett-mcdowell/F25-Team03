@@ -6,7 +6,7 @@ import traceback
 from flask import Blueprint, request, jsonify
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils.db import get_db_connection
-from audit_logging.login_audit_logs import log_login_attempt
+from audit_logging.login_audit_logs import log_login_attempt, log_password_change
 
 # =========================
 # Logging setup
@@ -249,8 +249,7 @@ def password_reset():
         if cur.rowcount == 0:
             return jsonify({'error': 'User not found'}), 404
         
-        #_exec(cur, ) # log the password reset action
-
+        #log_password_change(None, username, source='WEB')
 
         conn.commit()
     except Exception as e:

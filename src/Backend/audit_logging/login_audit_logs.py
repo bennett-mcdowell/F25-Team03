@@ -23,3 +23,23 @@ def log_login_attempt(user_id, email_attempted, success, failure_reason=None, so
     finally:
         if 'conn' in locals() and conn:
             conn.close()
+
+def log_password_change(user_id):
+    occurred_at = datetime.datetime.now(datetime.timezone.utc)
+    try:
+        conn = get_db_connection()
+        cursor = conn.cursor()
+        cursor.execute(
+            """
+            INSERT INTO change_log (
+                (user_id, change_type, occurred_at)
+            ) VALUES (%s, %s, %s)
+            """,
+            (user_id, 'PASSWORD_CHANGE', occurred_at)
+        )
+        conn.commit()
+    except Exception as e:
+        print('Password change log error:', e)
+    finally:
+        if 'conn' in locals() and conn:
+            conn.close()

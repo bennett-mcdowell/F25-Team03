@@ -1,11 +1,4 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // Check for JWT token
-    const token = localStorage.getItem('jwt');
-    if (!token) {
-        window.location.href = "/";
-        return;
-    }
-
     // Example points, update to come from DB
     let userPoints = 1200;
     document.getElementById("pointsDisplay").textContent = userPoints;
