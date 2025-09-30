@@ -46,7 +46,12 @@ def about_api():
         return jsonify(data)
     else:
         return jsonify({'error': 'No data found'}), 404
-    
+ 
+@routes_bp.route('/account')
+def account_page():
+    return render_template('account.html')
+
+
 # @routes_bp.route('/api/register', methods=['POST'])
 # def register_api():
 #     return jsonify({'message': 'User registered successfully'}), 201

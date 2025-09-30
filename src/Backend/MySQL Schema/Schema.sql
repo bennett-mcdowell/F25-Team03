@@ -186,6 +186,25 @@ CREATE TABLE current_sessions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =====================================================================
+-- AUDIT: change_log (minimal)
+-- =====================================================================
+CREATE TABLE change_log (
+  change_id BIGINT NOT NULL AUTO_INCREMENT,
+  user_id INT NULL,                             
+  change_type VARCHAR(100) NOT NULL,
+  occurred_at DATETIME(6) NOT NULL DEFAULT CURRENT_TIMESTAMP(6),
+  PRIMARY KEY (change_id),
+  KEY idx_changelog_user_time (user_id, occurred_at),
+  CONSTRAINT fk_changelog_user
+    FOREIGN KEY (user_id) REFERENCES `user`(user_id)
+    ON UPDATE CASCADE ON DELETE SET NULL
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- Example insert your app might do:
+-- INSERT INTO change_log (user_id, change_type) 
+-- VALUES (123, 'DRIVER_BALANCE_UPDATE');
+
+-- =====================================================================
 -- TRIGGERS: role exclusivity + lockout updates via login_log
 -- =====================================================================
 
