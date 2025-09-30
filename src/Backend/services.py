@@ -40,10 +40,11 @@ def get_raw_ebay_data():
             'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US'
         }
         
+        # Note: Using 'automotive' for sandbox testing. 
+        # Switch to 'truck accessories' when using production eBay API
         params = {
-            'q': 'electronics',
-            'limit': 6,
-            'filter': 'price:[1..1000]'
+            'q': 'automotive',
+            'limit': 30
         }
         
         search_response = requests.get(search_url, headers=search_headers, params=params)
