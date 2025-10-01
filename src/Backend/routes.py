@@ -3,13 +3,14 @@ from utils.db import get_about_data
 import os
 import requests
 import base64
+from auth import token_required
 from services import get_raw_ebay_data
 
 routes_bp = Blueprint('routes', __name__)
 
 @routes_bp.route('/')
-def register_page():
-    return render_template('register.html')
+def login_page():
+    return render_template('login.html')
 
 @routes_bp.route('/market')
 def market():
@@ -22,13 +23,21 @@ def market():
 def about_page():
     return render_template('about.html')
 
-@routes_bp.route('/login')
+""" @routes_bp.route('/login')
 def login_page():
-    return render_template('login.html')
+    return render_template('login.html') """
+
+@routes_bp.route('/register')
+def register_page():
+    return render_template('register.html')
 
 @routes_bp.route('/home')
 def home_page():
     return render_template('home.html')
+
+@routes_bp.route('/passwordreset')
+def password_reset_page():
+    return render_template('passwordreset.html')
 
 @routes_bp.route('/api/about', methods=['GET'])
 def about_api():
@@ -37,7 +46,12 @@ def about_api():
         return jsonify(data)
     else:
         return jsonify({'error': 'No data found'}), 404
-    
+ 
+@routes_bp.route('/account')
+def account_page():
+    return render_template('account.html')
+
+
 # @routes_bp.route('/api/register', methods=['POST'])
 # def register_api():
 #     return jsonify({'message': 'User registered successfully'}), 201

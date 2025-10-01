@@ -16,27 +16,40 @@
     </nav>
     <div class="container"> 
         {% if api_data %}
-            <!-- eBay Data Display -->
             <h1>eBay Products ($1-$1000)</h1>
-            <div id="ebay-data">
+            <div id="ebay-data" class="product-list">
                 {% if api_data.error %}
                     <p style="color: red;"><strong>Error:</strong> {{ api_data.error }}</p>
                 {% elif api_data.itemSummaries and api_data.itemSummaries|length > 0 %}
                     <p><strong>Found {{ api_data.itemSummaries|length }} items</strong></p>
-                    <div style="border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 5px;">
-                        <h3>{{ api_data.itemSummaries[0].title }}</h3>
-                        <p><strong>Condition:</strong> {{ api_data.itemSummaries[0].condition }}</p>
-                        <p><strong>Price:</strong> {{ api_data.itemSummaries[0].price.currency }} {{ api_data.itemSummaries[0].price.value }}</p>
-                        {% if api_data.itemSummaries[0].itemWebUrl %}
-                        <p><a href="{{ api_data.itemSummaries[0].itemWebUrl }}" target="_blank">View on eBay</a></p>
-                        {% endif %}
+
+                    <div class="scroll-container">
+                        {% for item in api_data.itemSummaries %}
+                            <div class="product-card">
+                                {% if item.image and item.image.imageUrl %}
+                                    <img src="{{ item.image.imageUrl }}" alt="{{ item.title }}">
+                                {% else %}
+                                    <img src="{{ url_for('static', filename='img/placeholder.png') }}" alt="No image available">
+                                {% endif %}
+
+                                <h3>{{ item.title }}</h3>
+                                <p><strong>Condition:</strong> {{ item.condition }}</p>
+                                <p><strong>Price:</strong> {{ item.price.currency }} {{ item.price.value }}</p>
+
+                                {% if item.itemWebUrl %}
+                                    <p><a href="{{ item.itemWebUrl }}" target="_blank">View on eBay</a></p>
+                                {% else %}
+                                    <p><a href="#" target="_blank">No eBay link available</a></p>
+                                {% endif %}
+                            </div>
+                        {% endfor %}
                     </div>
+
                 {% else %}
                     <p>No items found in the $1-$1000 price range</p>
                 {% endif %}
             </div>
         {% else %}
-            <!-- Normal About Data -->
             <h1>About</h1>
             <div id="about-data">
                 <p>Loading...</p>

@@ -1,4 +1,5 @@
 import requests, os, base64
+
 # ------------------------------
 # eBay API interaction
 def get_raw_ebay_data():
@@ -26,7 +27,6 @@ def get_raw_ebay_data():
         }
         
         response = requests.post(token_url, headers=headers, data=data)
-        
         if response.status_code != 200:
             return {"error": f"Token failed: {response.status_code}"}
         
@@ -34,7 +34,6 @@ def get_raw_ebay_data():
         
         # Get products
         search_url = "https://api.sandbox.ebay.com/buy/browse/v1/item_summary/search"
-        
         search_headers = {
             'Authorization': f'Bearer {token}',
             'X-EBAY-C-MARKETPLACE-ID': 'EBAY_US'
@@ -47,11 +46,21 @@ def get_raw_ebay_data():
         }
         
         search_response = requests.get(search_url, headers=search_headers, params=params)
-        
         if search_response.status_code == 200:
-            
             raw_data = search_response.json()
-            print(f"eBay API success: Found {len(raw_data.get('itemSummaries', []))} items")
+            
+            # Ensure every item has image and URL fields
+            for item in raw_data.get('itemSummaries', []):
+                # Image fallback
+                if not item.get('image'):
+                    item['image'] = {'imageUrl': '/static/img/placeholder.png'}  # your placeholder image
+                elif not item['image'].get('imageUrl') and item['image'].get('images'):
+                    item['image']['imageUrl'] = item['image']['images'][0].get('imageUrl', '/static/img/placeholder.png')
+                
+                # URL fallback
+                if not item.get('itemWebUrl') and item.get('hubItemUrl'):
+                    item['itemWebUrl'] = item['hubItemUrl']
+            
             return raw_data
         else:
             return {"error": f"Search failed: {search_response.status_code}"}

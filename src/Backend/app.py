@@ -4,6 +4,9 @@ from flask import Flask
 from flask_caching import Cache
 from flask_cors import CORS
 from dotenv import load_dotenv
+import base64
+import os
+
 
 # ------------------------------
 # Logging setup (stdout + optional file)
@@ -46,10 +49,12 @@ def configure_logging():
 # Blueprints
 from routes import routes_bp
 from auth import auth_bp
+from account import account_bp 
 
 # App initialization
 load_dotenv()
 configure_logging()  # <<— initialize logging before anything logs
+
 
 app = Flask(__name__, static_folder='../Frontend/static', template_folder='../Frontend/templates')
 CORS(app)
@@ -59,6 +64,7 @@ cache = Cache(app, config={'CACHE_TYPE': 'SimpleCache'})
 # Register Blueprints
 app.register_blueprint(routes_bp)
 app.register_blueprint(auth_bp)
+app.register_blueprint(account_bp)
 
 # Optional: prove ENV values at startup (safe ones)
 logging.getLogger(__name__).info(
