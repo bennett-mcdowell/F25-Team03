@@ -33,7 +33,7 @@ def register_page():
 
 @routes_bp.route('/home')
 def home_page():
-    return render_template('home.html')
+    return render_template('landing_page.html')
 
 @routes_bp.route('/passwordreset')
 def password_reset_page():
