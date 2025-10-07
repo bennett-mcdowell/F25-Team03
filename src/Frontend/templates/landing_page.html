@@ -4,13 +4,12 @@
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Dashboard - Home</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/landing_page.css') }}" />
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
   <script>
     // Redirect if not logged in
     if (!localStorage.getItem('jwt')) {
       window.location.href = '/';
     }
-    
   </script>
 </head>
 <body>
@@ -26,12 +25,6 @@
           </div>
         </div>
 
-        <nav class="app-header-navigation">
-          <a href="#" class="active">Home</a>
-          <a href="#">Catalog</a>
-          <a href="#" id="aboutBtn">About</a>
-        </nav>
-
         <div class="app-header-actions">
           <div class="app-header-actions-buttons">
             <button id="logoutBtn" class="flat-button">Logout</button>
@@ -41,13 +34,13 @@
 
       <!-- Body -->
       <main class="app-body">
-        <!-- Left Navigation (optional) -->
+        <!-- Left Navigation -->
         <aside class="app-body-navigation">
           <nav class="navigation">
-            <a href="#"><i class="ph-house"></i> Home</a>
-            <a href="#"><i class="ph-shopping-cart"></i> Catalog</a>
+            <a href="/home" id="homeBtn"><i class="ph-house"></i> Home</a>
+            <a href="/market" id="catalogBtn"><i class="ph-shopping-cart"></i> Catalog</a>
             <a href="#" id="aboutBtn"><i class="ph-info"></i> About</a>
-            <a href="#" id="logoutBtn"><i class="ph-sign-out"></i> Logout</a>
+            <a href="#" id="logoutBtnSidebar"><i class="ph-sign-out"></i> Logout</a>
           </nav>
         </aside>
 
@@ -73,11 +66,14 @@
 
             <div class="tiles" id="productCatalog">
               <!-- Product cards will be injected here by JS -->
+              <script>
+                const staticBase = "{{ url_for('static', filename='img/') }}";
+              </script>
             </div>
           </div>
         </section>
 
-        <!-- Right Sidebar (optional) -->
+        <!-- Right Sidebar -->
         <aside class="app-body-navigation">
           <div class="footer">
             <h1>My Dashboard <small>v1.0</small></h1>
