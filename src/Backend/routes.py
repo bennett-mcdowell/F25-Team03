@@ -1,4 +1,4 @@
-from flask import Blueprint, render_template, jsonify
+from flask import Blueprint, render_template, jsonify, redirect
 from utils.db import get_about_data
 import os
 import requests
@@ -9,8 +9,13 @@ from services import get_raw_ebay_data
 routes_bp = Blueprint('routes', __name__)
 
 @routes_bp.route('/')
+@routes_bp.route('/login')
 def login_page():
     return render_template('login.html')
+
+@routes_bp.route('/')
+def root_redirect():
+    return redirect('/login')
 
 @routes_bp.route('/market')
 def market():

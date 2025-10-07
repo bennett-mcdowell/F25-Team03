@@ -3,26 +3,80 @@
 <head>
 	<meta charset="UTF-8">
 	<meta name="viewport" content="width=device-width, initial-scale=1.0">
-	<title>Login</title>
-	<link rel="stylesheet" href="{{ url_for('static', filename='css/register.css') }}">
+	<title>Register</title>
+	<link rel="stylesheet" href="{{ url_for('static', filename='css/account_auth.css') }}">
 </head>
 <body>
-	<div class="register-container">
-		<h2>Register</h2>
-		<div id="error" class="error-message"></div>
-		<form id="registerForm" autocomplete="off">
-			<input type="text" id="firstname" name="firstname" placeholder="First Name">
-			<input type="text" id="lastname" name="lastname" placeholder="Last Name">
-			<input type="text" id="email" name="email" placeholder="Email">
-			<input type="text" id="ssn" name="ssn" placeholder="SSN">
-			<input type="text" id="city" name="city" placeholder="City">
-			<input type="text" id="state" name="state" placeholder="State">
-			<input type="text" id="country" name="country" placeholder="Country">
-			<input type="text" id="username" name="username" placeholder="Username">
-			<input type="password" id="password" name="password" placeholder="Password">
-			<input type="text" id="sponsor" name="sponsor" placeholder="Sponsor Code">
-			<button type="submit">Register</button>
-		</form>
+	<div class="login-wrap">
+		<div class="login-html">
+			<input id="tab-1" type="radio" name="tab" class="sign-in"><label for="tab-1" class="tab"><a href="/login" style="color:inherit;text-decoration:none;">Sign In</a></label>
+			<input id="tab-2" type="radio" name="tab" class="sign-up" checked><label for="tab-2" class="tab">Sign Up</label>
+			<div class="login-form">
+				<div class="sign-up-htm" style="display:block;">
+					<form id="registerForm" autocomplete="off">
+                        <div id="error" class="error-message" style="display:none;"></div>
+                        <div id="step1">
+                            <div class="group">
+                                <label for="firstname" class="label">First Name</label>
+                                <input id="firstname" name="firstname" type="text" class="input" placeholder="First Name">
+                            </div>
+                            <div class="group">
+                                <label for="lastname" class="label">Last Name</label>
+                                <input id="lastname" name="lastname" type="text" class="input" placeholder="Last Name">
+                            </div>
+                            <div class="group">
+                                <label for="email" class="label">Email</label>
+                                <input id="email" name="email" type="text" class="input" placeholder="Email">
+                            </div>
+                            <div class="group button-row">
+                                <button type="button" class="button" id="nextStep">Next</button>
+                            </div>
+                        </div>
+                        <div id="step2" style="display:none;">
+                            <div class="group">
+                                <label for="city" class="label">City</label>
+                                <input id="city" name="city" type="text" class="input" placeholder="City">
+                            </div>
+                            <div class="group">
+                                <label for="state" class="label">State</label>
+                                <input id="state" name="state" type="text" class="input" placeholder="State">
+                            </div>
+                            <div class="group">
+                                <label for="country" class="label">Country</label>
+                                <input id="country" name="country" type="text" class="input" placeholder="Country">
+                            </div>
+                            <div class="group">
+                                <label for="ssn" class="label">SSN</label>
+                                <input id="ssn" name="ssn" type="text" class="input" placeholder="SSN">
+                            </div>
+                            <div class="group button-row">
+                                <button type="button" class="button" id="prevStep">Back</button>
+                                <button type="button" class="button" id="nextStep2">Next</button>
+                            </div>
+                        </div>
+                        <div id="step3" style="display:none;">
+                            <div class="group">
+                                <label for="username" class="label">Username</label>
+                                <input id="username" name="username" type="text" class="input" placeholder="Username">
+                            </div>
+                            <div class="group">
+                                <label for="password" class="label">Password</label>
+                                <input id="password" name="password" type="password" class="input" data-type="password" placeholder="Password">
+                            </div>
+                            <div class="group">
+                                <label for="sponsor" class="label">Sponsor Code</label>
+                                <input id="sponsor" name="sponsor" type="text" class="input" placeholder="Sponsor Code">
+                            </div>
+                            <div class="group button-row">
+                                <button type="button" class="button" id="prevStep2">Back</button>
+                                <button type="submit" class="button" id="signUpBtn">Sign Up</button>
+                            </div>
+                            <div id="success" class="success-message" style="display:none;"></div>
+                        </div>
+                    </form>
+				</div>
+			</div>
+		</div>
 	</div>
 	<script src="{{ url_for('static', filename='js/register.js') }}"></script>
 </body>
