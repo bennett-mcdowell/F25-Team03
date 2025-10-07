@@ -3,7 +3,8 @@ import jwt
 import datetime
 import logging
 import traceback
-from flask import Blueprint, request, jsonify
+from flask import Blueprint, request, jsonify, g
+from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
 from utils.db import get_db_connection
 from audit_logging.login_audit_logs import log_login_attempt, log_password_change
@@ -264,8 +265,11 @@ def password_reset():
 
     return jsonify({'success': True, 'message': 'Password reset successfully'}), 200
 
+
+
 # To protect api endpoints
 def token_required(f):
+    @wraps(f)
     def wrapper(*args, **kwargs):
         token = None
         if 'Authorization' in request.headers:
@@ -276,9 +280,9 @@ def token_required(f):
             return jsonify({'error': 'Token is missing!'}), 401
         try:
             secret = os.getenv('JWT_SECRET', 'dev_secret')
-            jwt.decode(token, secret, algorithms=['HS256'])
+            # decode and stash for downstream handlers
+            g.decoded_token = jwt.decode(token, secret, algorithms=['HS256'])
         except Exception:
             return jsonify({'error': 'Token is invalid!'}), 401
         return f(*args, **kwargs)
-    wrapper.__name__ = f.__name__
     return wrapper

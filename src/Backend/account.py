@@ -1,32 +1,30 @@
 # src/Backend/account.py
-from flask import Blueprint, jsonify, request
+# src/Backend/account.py
+from flask import Blueprint, jsonify, request, g
 from utils.db import get_db_connection
-import jwt
-import os
+from auth import token_required                 # NEW: import decorator
 
 account_bp = Blueprint("account", __name__)
 
-SENSITIVE_USER_FIELDS = {"ssn"}          # never return these
-HIDE_TECH_FIELDS      = {"email_lc"}     # hide computed/lowercase helper
+SENSITIVE_USER_FIELDS = {"ssn"}
+HIDE_TECH_FIELDS      = {"email_lc"}
 
-def _get_current_user_id_from_auth_header():
-    auth = request.headers.get("Authorization", "")
-    if not auth.startswith("Bearer "):
-        return None
-    token = auth.split(" ", 1)[1].strip()
-    try:
-        decoded = jwt.decode(token, os.getenv("JWT_SECRET"), algorithms=["HS256"])
-        return decoded.get("user_id") or decoded.get("sub")
-    except Exception:
-        return None
+def _extract_user_id_from_claims():
+    """
+    Pull user id from decoded JWT claims placed in g by token_required.
+    Accepts either 'user_id' or 'sub'.
+    """
+    claims = getattr(g, "decoded_token", {}) or {}
+    return claims.get("user_id") or claims.get("sub")
 
 @account_bp.route("/api/account", methods=["GET"])
+@token_required                                   # NEW: protect the route
 def account_api():
     """
     Returns the current user's profile (sans ssn/email_lc), their user_type row,
     and role-specific details (admin | sponsor | driver).
     """
-    user_id = _get_current_user_id_from_auth_header()
+    user_id = _extract_user_id_from_claims()
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
 
