@@ -3,59 +3,63 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if api_data %}eBay Products{% else %}{% endif %}</title>
+    <title>Product Catalog</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/market.css') }}">
 </head>
 <body>
     <!-- Navigation -->
     <nav class="navbar">
-        <div class="logo">Market Page</div>
+        <div class="logo">Product Catalog</div>
         <ul class="nav-links">
-        <li><a href="#" id="homeBtn">Home</a></li>
+            <li><a href="#" id="homeBtn">Home</a></li>
         </ul>
     </nav>
+    
     <div class="container"> 
         {% if api_data %}
-            <h1>eBay Products ($1-$1000)</h1>
-            <div id="ebay-data" class="product-list">
-                {% if api_data.error %}
-                    <p style="color: red;"><strong>Error:</strong> {{ api_data.error }}</p>
-                {% elif api_data.itemSummaries and api_data.itemSummaries|length > 0 %}
-                    <p><strong>Found {{ api_data.itemSummaries|length }} items</strong></p>
-
-                    <div class="scroll-container">
-                        {% for item in api_data.itemSummaries %}
-                            <div class="product-card">
-                                {% if item.image and item.image.imageUrl %}
-                                    <img src="{{ item.image.imageUrl }}" alt="{{ item.title }}">
-                                {% else %}
-                                    <img src="{{ url_for('static', filename='img/placeholder.png') }}" alt="No image available">
-                                {% endif %}
-
-                                <h3>{{ item.title }}</h3>
-                                <p><strong>Condition:</strong> {{ item.condition }}</p>
-                                <p><strong>Price:</strong> {{ item.price.currency }} {{ item.price.value }}</p>
-
-                                {% if item.itemWebUrl %}
-                                    <p><a href="{{ item.itemWebUrl }}" target="_blank">View on eBay</a></p>
-                                {% else %}
-                                    <p><a href="#" target="_blank">No eBay link available</a></p>
-                                {% endif %}
+            <div class="header-section">
+                <h1>Browse Products</h1>
+                <p class="subtitle">{{ api_data.products|length }} items available</p>
+            </div>
+            
+            {% if api_data.error %}
+                <p style="color: red;"><strong>Error:</strong> {{ api_data.error }}</p>
+            {% elif api_data.products and api_data.products|length > 0 %}
+                <div class="product-grid">
+                    {% for product in api_data.products %}
+                        <div class="product-card">
+                            <div class="image-container">
+                                <img src="{{ product.image }}" alt="{{ product.title }}">
+                                <span class="category-badge">{{ product.category }}</span>
                             </div>
-                        {% endfor %}
-                    </div>
-
-                {% else %}
-                    <p>No items found in the $1-$1000 price range</p>
-                {% endif %}
-            </div>
-        {% else %}
-            <h1>About</h1>
-            <div id="about-data">
-                <p>Loading...</p>
-            </div>
-            <script src="{{ url_for('static', filename='js/market.js') }}"></script>
+                            <div class="card-content">
+                                <h3>{{ product.title }}</h3>
+                                <div class="rating">
+                                    {% set rating = product.rating.rate %}
+                                    {% for i in range(5) %}
+                                        {% if i < rating|int %}
+                                            <span class="star filled">★</span>
+                                        {% elif i < rating %}
+                                            <span class="star half">★</span>
+                                        {% else %}
+                                            <span class="star">★</span>
+                                        {% endif %}
+                                    {% endfor %}
+                                    <span class="rating-count">({{ product.rating.count }})</span>
+                                </div>
+                                <p class="description">{{ product.description[:120] }}...</p>
+                                <p class="price">${{ "%.2f"|format(product.price) }}</p>
+                                <button class="view-details-btn">View Details</button>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <p>No products available</p>
+            {% endif %}
         {% endif %}
     </div>
+    
+    <script src="{{ url_for('static', filename='js/market.js') }}"></script>
 </body>
 </html>
