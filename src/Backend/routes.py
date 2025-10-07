@@ -1,31 +1,30 @@
-from flask import Blueprint, render_template, jsonify
+from flask import Blueprint, render_template, jsonify, redirect
 from utils.db import get_about_data
 import os
 import requests
 import base64
 from auth import token_required
-from services import get_raw_ebay_data
+from services import get_fake_store_data 
 
 routes_bp = Blueprint('routes', __name__)
 
 @routes_bp.route('/')
+@routes_bp.route('/login')
 def login_page():
     return render_template('login.html')
 
+@routes_bp.route('/')
+def root_redirect():
+    return redirect('/login')
+
 @routes_bp.route('/market')
 def market():
-    # Get raw eBay data
-    ebay_api_response = get_raw_ebay_data()
-    # Pass to market.html template
-    return render_template('market.html', api_data=ebay_api_response)
+    api_response = get_fake_store_data()
+    return render_template('market.html', api_data=api_response)
 
 @routes_bp.route('/about')
 def about_page():
     return render_template('about.html')
-
-""" @routes_bp.route('/login')
-def login_page():
-    return render_template('login.html') """
 
 @routes_bp.route('/register')
 def register_page():
@@ -33,7 +32,7 @@ def register_page():
 
 @routes_bp.route('/home')
 def home_page():
-    return render_template('home.html')
+    return render_template('landing_page.html')
 
 @routes_bp.route('/passwordreset')
 def password_reset_page():
@@ -50,7 +49,6 @@ def about_api():
 @routes_bp.route('/account')
 def account_page():
     return render_template('account.html')
-
 
 # @routes_bp.route('/api/register', methods=['POST'])
 # def register_api():

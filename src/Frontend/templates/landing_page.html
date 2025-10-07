@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - Home</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
+  <script>
+    // Redirect if not logged in
+    if (!localStorage.getItem('jwt')) {
+      window.location.href = '/';
+    }
+  </script>
+</head>
+<body>
+  <div class="responsive-wrapper">
+    <div class="app">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="logo">
+          <div class="logo-icon">🌿</div>
+          <div class="logo-title">
+            <span>My Dashboard</span>
+            <span>Welcome back!</span>
+          </div>
+        </div>
+
+        <div class="app-header-actions">
+          <div class="app-header-actions-buttons">
+            <button id="logoutBtn" class="flat-button">Logout</button>
+          </div>
+        </div>
+      </header>
+
+      <!-- Body -->
+      <main class="app-body">
+        <!-- Left Navigation -->
+        <aside class="app-body-navigation">
+          <nav class="navigation">
+            <a href="/home" id="homeBtn"><i class="ph-house"></i> Home</a>
+            <a href="/market" id="catalogBtn"><i class="ph-shopping-cart"></i> Catalog</a>
+            <a href="#" id="aboutBtn"><i class="ph-info"></i> About</a>
+            <a href="#" id="logoutBtnSidebar"><i class="ph-sign-out"></i> Logout</a>
+          </nav>
+        </aside>
+
+        <!-- Main Content -->
+        <section class="service-section">
+          <h2>Your Points</h2>
+          <div class="tiles">
+            <div class="tile">
+              <div class="tile-header">
+                <i class="ph-star"></i>
+                <h3>
+                  <span id="pointsDisplay">0</span>
+                  <span>Available Points</span>
+                </h3>
+              </div>
+            </div>
+          </div>
+
+          <div class="transfer-section">
+            <div class="transfer-section-header">
+              <h2>Featured Catalog</h2>
+            </div>
+
+            <div class="tiles" id="productCatalog">
+              <!-- Product cards will be injected here by JS -->
+              <script>
+                const staticBase = "{{ url_for('static', filename='img/') }}";
+              </script>
+            </div>
+          </div>
+        </section>
+
+        <!-- Right Sidebar -->
+        <aside class="app-body-navigation">
+          <div class="footer">
+            <h1>My Dashboard <small>v1.0</small></h1>
+            <div>&copy; 2025 Your Company</div>
+          </div>
+        </aside>
+      </main>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/landing_page.js') }}"></script>
+</body>
+</html>
