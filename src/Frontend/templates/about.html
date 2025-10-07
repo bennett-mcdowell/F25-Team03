@@ -1,48 +1,53 @@
 <!DOCTYPE html>
 <html lang="en">
 <head>
-    <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>{% if api_data %}eBay Products{% else %}About Page{% endif %}</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/about.css') }}">
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>About</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="logo">About Page</div>
-        <ul class="nav-links">
-        <li><a href="#" id="homeBtn">Home</a></li>
-        </ul>
-    </nav>
-    <div class="container"> 
-        {% if api_data %}
-            <!-- eBay Data Display -->
-            <h1>eBay Products ($1-$1000)</h1>
-            <div id="ebay-data">
-                {% if api_data.error %}
-                    <p style="color: red;"><strong>Error:</strong> {{ api_data.error }}</p>
-                {% elif api_data.itemSummaries and api_data.itemSummaries|length > 0 %}
-                    <p><strong>Found {{ api_data.itemSummaries|length }} items</strong></p>
-                    <div style="border: 1px solid #ccc; padding: 15px; margin: 10px 0; border-radius: 5px;">
-                        <h3>{{ api_data.itemSummaries[0].title }}</h3>
-                        <p><strong>Condition:</strong> {{ api_data.itemSummaries[0].condition }}</p>
-                        <p><strong>Price:</strong> {{ api_data.itemSummaries[0].price.currency }} {{ api_data.itemSummaries[0].price.value }}</p>
-                        {% if api_data.itemSummaries[0].itemWebUrl %}
-                        <p><a href="{{ api_data.itemSummaries[0].itemWebUrl }}" target="_blank">View on eBay</a></p>
-                        {% endif %}
-                    </div>
-                {% else %}
-                    <p>No items found in the $1-$1000 price range</p>
-                {% endif %}
+  <div class="responsive-wrapper">
+    <div class="app">
+      <!-- Sidebar -->
+      <aside class="app-body-navigation">
+        <div>
+          <div class="logo">
+            <div class="logo-icon">🌿</div>
+            <div class="logo-title">
+              <span>About Page</span>
             </div>
-        {% else %}
-            <!-- Normal About Data -->
-            <h1>About</h1>
-            <div id="about-data">
-                <p>Loading...</p>
+          </div>
+
+          <nav class="navigation">
+            <a href="/home"><i class="icon-home"></i>Home</a>
+            <a href="/market"><i class="icon-box"></i>Market</a>
+            <a href="/about" class="active"><i class="icon-info"></i>About</a>
+            <a href="/logout"><i class="icon-logout"></i>Logout</a>
+          </nav>
+        </div>
+      </aside>
+
+      <!-- Main Content -->
+      <main class="app-body">
+        <section class="about-section" style="grid-column: span 3;">
+          <div class="about-card">
+            <h1 class="about-title">
+              About Page
+            </h1>
+
+            <!-- Dynamic content populated by about.js -->
+            <div id="about-data"></div>
+
+            <div class="footer about-footer">
+              <p>© {{ year or "2025" }} Team #03 — All Rights Reserved</p>
             </div>
-            <script src="{{ url_for('static', filename='js/about.js') }}"></script>
-        {% endif %}
+          </div>
+        </section>
+      </main>
     </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/about.js') }}"></script>
 </body>
 </html>

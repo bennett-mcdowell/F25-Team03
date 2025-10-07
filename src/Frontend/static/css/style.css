@@ -853,3 +853,33 @@ button {
 		box-shadow: 0 0 0 2px var(--c-gray-800), 0 0 0 4px var(--c-gray-300);
 	}
 }
+
+.about-card {
+  background-color: var(--c-gray-800);
+  border: 1px solid var(--c-gray-600);
+  border-radius: 16px;
+  padding: 2rem 3rem;
+  color: var(--c-text-primary);
+  max-width: 800px;
+  margin: 0 auto;
+}
+
+.about-title {
+  text-align: center;
+  color: var(--c-text-secondary);
+  margin-bottom: 1.5rem;
+}
+
+.about-item {
+  margin-bottom: 1rem;
+}
+
+.highlight {
+  color: var(--c-green-500);
+}
+
+.about-footer {
+  text-align: center;
+  margin-top: 2rem;
+  color: var(--c-text-tertiary);
+}
