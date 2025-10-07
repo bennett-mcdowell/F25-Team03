@@ -1,0 +1,143 @@
+/* ===== Account Page Styles (matches existing theme) ===== */
+
+/* Header */
+.page-header {
+  background-color: #2c3e50;
+  color: #fff;
+  padding: 1.25rem 2rem;
+  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
+}
+.page-header h1 {
+  margin: 0;
+  font-size: 1.6rem;
+  letter-spacing: 0.3px;
+  font-weight: 700;
+}
+
+/* Layout container */
+.container {
+  max-width: 1100px;
+  margin: 1.25rem auto;
+  padding: 0 1rem;
+}
+
+/* Card */
+.card {
+  background: #fff;
+  border-radius: 8px;
+  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
+  padding: 1.25rem 1.25rem 1rem;
+}
+.card + .card {
+  margin-top: 1rem;
+}
+.card-title {
+  margin: 0 0 0.75rem 0;
+  font-size: 1.1rem;
+  font-weight: 700;
+  color: #2c3e50;
+  position: relative;
+}
+.card-title::after {
+  content: "";
+  display: block;
+  width: 44px;
+  height: 3px;
+  background: #27ae60;
+  border-radius: 2px;
+  margin-top: 0.5rem;
+}
+
+/* Responsive table wrapper */
+.responsive-table {
+  width: 100%;
+  overflow-x: auto;             /* graceful on small screens */
+  -webkit-overflow-scrolling: touch;
+  border-radius: 6px;
+  border: 1px solid #eceff3;
+}
+
+/* Table styles (apply when your JS injects <table>) */
+.responsive-table table {
+  width: 100%;
+  border-collapse: collapse;
+  min-width: 580px;             /* keep columns readable */
+  background: #fff;
+  font-size: 0.95rem;
+}
+.responsive-table th,
+.responsive-table td {
+  padding: 0.75rem 0.9rem;
+  text-align: left;
+  border-bottom: 1px solid #eef1f4;
+  color: #2c3e50;
+}
+.responsive-table th {
+  background: #f4f6f8;
+  font-weight: 700;
+  color: #2c3e50;
+  white-space: nowrap;
+}
+.responsive-table tr:hover td {
+  background: #fafbfc;
+}
+
+/* Subtle badges/labels if you add any */
+.badge {
+  display: inline-block;
+  padding: 0.2rem 0.5rem;
+  border-radius: 999px;
+  background: #eaf7ef;
+  color: #27ae60;
+  font-size: 0.8rem;
+  font-weight: 700;
+}
+
+/* Utility */
+.hidden { display: none !important; }
+
+/* Spacing helpers */
+.mt-1 { margin-top: 0.5rem; }
+.mt-2 { margin-top: 1rem; }
+.mt-3 { margin-top: 1.5rem; }
+
+/* Buttons (optional, matches theme) */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.4rem;
+  padding: 0.55rem 0.9rem;
+  border-radius: 6px;
+  border: 1px solid transparent;
+  font-weight: 700;
+  cursor: pointer;
+  background: #2c3e50;
+  color: #fff;
+  transition: transform 0.02s ease, box-shadow 0.2s ease, background 0.2s ease;
+}
+.btn:hover {
+  background: #33495f;
+  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
+}
+.btn:active {
+  transform: translateY(1px);
+}
+.btn--ghost {
+  background: #fff;
+  color: #2c3e50;
+  border-color: #dfe6ee;
+}
+.btn--success {
+  background: #27ae60;
+}
+.btn--success:hover {
+  background: #239b55;
+}
+
+/* Responsive tweaks */
+@media (max-width: 768px) {
+  .page-header { padding: 1rem 1.25rem; }
+  .container { padding: 0 0.75rem; }
+  .card { padding: 1rem; }
+  .card-title { font-size: 1.05rem; }
+}
