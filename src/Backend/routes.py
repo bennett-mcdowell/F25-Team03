@@ -4,7 +4,7 @@ import os
 import requests
 import base64
 from auth import token_required
-from services import get_fake_store_data  # Changed from get_raw_ebay_data
+from services import get_fake_store_data 
 
 routes_bp = Blueprint('routes', __name__)
 
@@ -19,9 +19,7 @@ def root_redirect():
 
 @routes_bp.route('/market')
 def market():
-    # Get Fake Store data
-    api_response = get_fake_store_data()  # Changed
-    # Pass to market.html template
+    api_response = get_fake_store_data()
     return render_template('market.html', api_data=api_response)
 
 @routes_bp.route('/about')

@@ -47,8 +47,8 @@
                                     <span class="rating-count">({{ product.rating.count }})</span>
                                 </div>
                                 <p class="description">{{ product.description[:120] }}...</p>
-                                <p class="price">${{ "%.2f"|format(product.price) }}</p>
-                                <button class="view-details-btn">View Details</button>
+                                <p class="price">{{ (product.price * 100)|int }} points</p>
+                                <button class="view-details-btn">Purchase</button>
                             </div>
                         </div>
                     {% endfor %}
