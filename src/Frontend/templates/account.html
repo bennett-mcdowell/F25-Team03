@@ -5,30 +5,62 @@
   <meta charset="UTF-8" />
   <title>Account</title>
   <!-- Reuse your global stylesheet/theme -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='account.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
+  <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+  <script>Auth.requireAuth('/login');</script>
 </head>
 <body>
-  <header class="page-header">
-    <h1>Account Information</h1>
-  </header>
+  <div class="responsive-wrapper">
+    <div class="app">
+      <!-- Header -->
+      <header class="app-header">
+        <div class="logo">
+          <div class="logo-title">
+            <span>Account</span>
+          </div>
+        </div>
+      </header>
 
-  <main class="container">
-    <section class="card">
-      <h2 class="card-title">Profile</h2>
-      <div id="account-user" class="responsive-table"></div>
-    </section>
+      <!-- Body -->
+      <main class="app-body">
+        {% include 'partials/_sidebar.html' %}
 
-    <section class="card" style="margin-top:1rem;">
-      <h2 class="card-title">Account Type</h2>
-      <div id="account-type" class="responsive-table"></div>
-    </section>
+        <!-- Main Content -->
+        <section class="service-section">
+          <h2>Account</h2>
 
-    <section class="card" style="margin-top:1rem;">
-      <h2 class="card-title" id="role-title" style="display:none;"></h2>
-      <div id="account-role" class="responsive-table"></div>
-    </section>
-  </main>
+          <div class="tiles">
+            <div class="tile" style="width:100%">
+              <div class="tile-header">
+                <h3>Profile</h3>
+              </div>
+              <div id="account-user" class="responsive-table"></div>
+            </div>
+          </div>
+
+          <div class="tiles" style="margin-top:1rem">
+            <div class="tile" style="width:100%">
+              <div class="tile-header">
+                <h3>Account Type</h3>
+              </div>
+              <div id="account-type" class="responsive-table"></div>
+            </div>
+          </div>
+
+          <div class="tiles" style="margin-top:1rem">
+            <div class="tile" style="width:100%">
+              <div class="tile-header">
+                <h3 id="role-title" style="display:none;"></h3>
+              </div>
+              <div id="account-role" class="responsive-table"></div>
+            </div>
+          </div>
+        </section>
+      </main>
+    </div>
+  </div>
 
   <script src="{{ url_for('static', filename='js/account.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
 </body>
 </html>

@@ -1,22 +1,5 @@
 // static/js/account.js
 (function () {
-  // ---- Config ----
-  const TOKEN_STORAGE_KEY = "auth_token"; // change if your login saves under a different key
-  const LOGIN_PATH = "/login";
-
-  // ---- Helpers ----
-  function getToken() {
-    // Swap for sessionStorage or cookie read if that's your setup
-    return localStorage.getItem(TOKEN_STORAGE_KEY);
-  }
-
-  function redirectToLogin() {
-    try {
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
-    } catch (_) {}
-    window.location.href = LOGIN_PATH;
-  }
-
   function setLoading(el, text = "Loading…") {
     if (!el) return;
     el.innerHTML = `<div class="loading">${escapeHTML(text)}</div>`;
@@ -143,11 +126,6 @@
     setLoading(userEl);
     setLoading(typeEl);
     setLoading(roleEl);
-
-    if (!token) {
-      redirectToLogin();
-      return;
-    }
 
     let res;
     try {
