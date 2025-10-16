@@ -5,9 +5,25 @@
   <meta charset="UTF-8" />
   <title>Account</title>
   <!-- Reuse your global stylesheet/theme -->
-  <link rel="stylesheet" href="{{ url_for('static', filename='account.css') }}">
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/account.css') }}">
+    <script>
+    // Checks for valid JWT
+    if (!localStorage.getItem('jwt')) {
+        window.location.href = '/';
+    }
+  </script>
 </head>
 <body>
+    <nav class="navbar">
+    <h1>MyApp</h1>
+    <ul class="nav-links">
+      <li><a href="/home">Home</a></li>
+      <li><a href="/market">Market</a></li>
+      <li><a href="/account">Account</a></li>
+      <li><a href="/about">About</a></li>
+      <li><a href="/logout">Logout</a></li>
+    </ul>
+  </nav>
   <header class="page-header">
     <h1>Account Information</h1>
   </header>
@@ -27,6 +43,27 @@
       <h2 class="card-title" id="role-title" style="display:none;"></h2>
       <div id="account-role" class="responsive-table"></div>
     </section>
+    <!-- Sponsor tools: rendered/activated by JS only if role_name === 'Sponsor' -->
+    <section class="card" id="sponsor-bulk-tools" style="margin-top:1rem; display:none;">
+      <h2 class="card-title">Bulk Driver Upload</h2>
+
+      <p class="muted">
+        Upload a <strong>pipe-delimited</strong> text file (<code>|</code>) with rows like:
+        <code>D||First|Last|email@example.com</code>
+      </p>
+
+      <div class="bulk-controls">
+        <input type="file" id="bulk-file" accept=".txt,.csv,.psv,.log,.data" />
+        <label class="checkbox">
+          <input type="checkbox" id="dry-run" checked />
+          Dry run (validate only; don’t write to DB)
+        </label>
+        <button id="bulk-upload-btn" class="btn">Process File</button>
+      </div>
+
+      <div id="bulk-results" class="bulk-results"></div>
+    </section>
+    
   </main>
 
   <script src="{{ url_for('static', filename='js/account.js') }}"></script>
