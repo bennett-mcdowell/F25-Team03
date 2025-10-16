@@ -1,7 +1,4 @@
 (function () {
-  const TOKEN_STORAGE_KEY = "jwt";    // <<< must match account.html check
-  const LOGIN_PATH = "/login";
-
   function setLoading(el, text = "Loading…") {
     if (el) el.innerHTML = `<div class="loading">${escapeHTML(text)}</div>`;
   }
@@ -137,19 +134,28 @@ function initSponsorBulkTools(roleName) {
     setLoading(typeEl);
     setLoading(roleEl);
 
-    const token = localStorage.getItem(TOKEN_STORAGE_KEY);
+    const token = (window.Auth && typeof window.Auth.getToken === 'function')
+      ? window.Auth.getToken()
+      : localStorage.getItem('jwt');
+
     if (!token) {
-      window.location.href = LOGIN_PATH;
+      console.warn('fetchAccount: no auth token available; redirecting to /login');
+      setError(userEl, 'Not authenticated. Redirecting to login...');
+      setError(typeEl, 'Not authenticated.');
+      setError(roleEl, 'Not authenticated.');
+      setTimeout(() => { window.location.href = '/login'; }, 400);
       return;
     }
 
+    try { console.debug('fetchAccount: sending request with token (len):', token.length); } catch (e) {}
+
     let res;
     try {
-      res = await fetch("/api/account", {
-        method: "GET",
+      res = await fetch('/api/account', {
+        method: 'GET',
         headers: {
-          "Authorization": `Bearer ${token}`,
-          "Accept": "application/json"
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
         }
       });
     } catch (e) {
@@ -161,7 +167,7 @@ function initSponsorBulkTools(roleName) {
     }
 
     if (res.status === 401) {
-      window.location.href = LOGIN_PATH;
+      window.location.href = '/login';
       return;
     }
     if (!res.ok) {

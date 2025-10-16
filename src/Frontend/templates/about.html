@@ -5,43 +5,33 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>About</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+  <script>Auth.requireAuth('/login');</script>
 </head>
 <body>
   <div class="responsive-wrapper">
     <div class="app">
-      <!-- Sidebar -->
-      <aside class="app-body-navigation">
-        <div>
-          <div class="logo">
-            <div class="logo-icon">🌿</div>
-            <div class="logo-title">
-              <span>About Page</span>
-            </div>
+      <!-- Header -->
+      <header class="app-header">
+        <div class="logo">
+          <div class="logo-title">
+            <span>My Dashboard</span>
           </div>
-
-          <nav class="navigation">
-            <a href="/home"><i class="icon-home"></i>Home</a>
-            <a href="/market"><i class="icon-box"></i>Market</a>
-            <a href="/about" class="active"><i class="icon-info"></i>About</a>
-            <a href="/logout"><i class="icon-logout"></i>Logout</a>
-          </nav>
         </div>
-      </aside>
+      </header>
 
-      <!-- Main Content -->
+      <!-- Body -->
       <main class="app-body">
-        <section class="about-section" style="grid-column: span 3;">
+        {% include 'partials/_sidebar.html' %}
+
+        <!-- Main Content -->
+        <section class="about-section" style="grid-column: span 1;">
           <div class="about-card">
             <h1 class="about-title">
               About Page
             </h1>
-
             <!-- Dynamic content populated by about.js -->
             <div id="about-data"></div>
-
-            <div class="footer about-footer">
-              <p>© {{ year or "2025" }} Team #03 — All Rights Reserved</p>
-            </div>
           </div>
         </section>
       </main>
@@ -49,5 +39,6 @@
   </div>
 
   <script src="{{ url_for('static', filename='js/about.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
 </body>
 </html>
