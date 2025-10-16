@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8" />
+  <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+  <title>Dashboard - Home</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/home.css') }}" />
+  <script>
+    // Checks for valid JWT
+    if (!localStorage.getItem('jwt')) {
+        window.location.href = '/';
+    }
+  </script>
+</head>
+<body>
+  <!-- Navigation -->
+  <nav class="navbar">
+    <div class="logo">My Dashboard</div>
+    <ul class="nav-links">
+      <li><a href="#">Home</a></li>
+      <li><a href="#">Catalog</a></li>
+      <li><a href="#" id="aboutBtn">About</a></li>
+      <li><a href="#" id="logoutBtn">Logout</a></li>
+    </ul>
+  </nav>
+
+  <!-- Points Section -->
+  <section class="points-section">
+    <h2>Your Points</h2>
+    <div class="points" id="pointsDisplay">0</div>
+  </section>
+
+  <!-- Featured Catalog -->
+  <section class="featured-catalog-section">
+    <h2>Featured Catalog</h2>
+    <div class="catalog" id="productCatalog">
+      <!-- Products will be injected here by JS -->
+    </div>
+  </section>
+
+  <script src="{{ url_for('static', filename='js/home.js') }}"></script>
+</body>
+</html>
