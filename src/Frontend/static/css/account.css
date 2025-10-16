@@ -1,168 +1,97 @@
 @import url('style.css');
 
-/* home.css or account.css */
+/* Account page overrides that follow the global theme in style.css */
 
-:root {
-  --bg-color: #121212;
-  --surface-color: #1e1e1e;
-  --card-color: #242424;
-  --accent-color: #4f8cff;
-  --text-color: #e0e0e0;
-  --muted-color: #888;
-  --border-color: #333;
-  --hover-color: #3a3a3a;
-  --radius: 12px;
+.service-section {
+  grid-column: 2 / span 1;
 }
 
-html, body {
-  margin: 0;
-  padding: 0;
-  font-family: "Inter", "Segoe UI", Roboto, sans-serif;
-  background-color: var(--bg-color);
-  color: var(--text-color);
-  min-height: 100vh;
+.card, .tile {
+  background-color: var(--c-gray-700);
+  color: var(--c-text-primary);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--c-gray-600);
 }
 
-/* ------------------- */
-/* NAVIGATION BAR      */
-/* ------------------- */
-
-.navbar {
-  background-color: var(--surface-color);
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 2rem;
-  position: sticky;
-  top: 0;
-  z-index: 100;
-}
-
-.navbar h1 {
-  font-size: 1.4rem;
-  color: var(--accent-color);
-  margin: 0;
-  letter-spacing: 0.5px;
-}
-
-.nav-links {
-  list-style: none;
-  display: flex;
-  gap: 1.5rem;
-  margin: 0;
-  padding: 0;
-}
-
-.nav-links a {
-  color: var(--text-color);
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s, border-bottom 0.2s;
-  border-bottom: 2px solid transparent;
-}
-
-.nav-links a:hover {
-  color: var(--accent-color);
-  border-bottom: 2px solid var(--accent-color);
-}
-
-/* ------------------- */
-/* PAGE CONTENT        */
-/* ------------------- */
-
-.page-header {
-  text-align: center;
-  margin: 2rem 0 1rem;
-}
-
-.page-header h1 {
-  font-size: 2rem;
-  color: var(--accent-color);
-  margin: 0;
-}
-
-.container {
-  width: 90%;
-  max-width: 1000px;
-  margin: 0 auto 3rem auto;
-  display: flex;
-  flex-direction: column;
-  gap: 1.5rem;
-}
-
-.card {
-  background-color: var(--card-color);
-  padding: 1.5rem 2rem;
-  border-radius: var(--radius);
-  box-shadow: 0 2px 8px rgba(0,0,0,0.3);
-  border: 1px solid var(--border-color);
+/* Override global small-card layout from style.css for full-width account cards */
+.service-section .card {
+  width: 100% !important;
+  padding: 1rem 1.25rem !important;
+  aspect-ratio: auto !important;
+  flex-shrink: 0;
+  display: block; /* use block layout so table flows naturally */
 }
 
 .card-title {
-  margin-top: 0;
-  font-size: 1.3rem;
-  border-bottom: 1px solid var(--border-color);
-  padding-bottom: 0.5rem;
-  margin-bottom: 1rem;
-  color: var(--accent-color);
+  color: var(--c-text-primary);
+  font-size: 1.1rem;
+  margin: 0 0 0.35rem 0; /* tightened spacing */
+  border-bottom: none;
 }
-
-/* ------------------- */
-/* TABLE STYLING       */
-/* ------------------- */
 
 .responsive-table table {
   width: 100%;
   border-collapse: collapse;
-  font-size: 0.95rem;
+  table-layout: auto; /* allow columns to size to content and wrap */
 }
 
-.responsive-table th,
+.responsive-table th, .responsive-table td {
+  padding: 0.35rem 0.5rem; /* tighter padding to bring table closer to title */
+  border-bottom: 1px solid var(--c-gray-600);
+  color: var(--c-text-primary);
+  white-space: normal;      /* allow wrapping */
+  word-break: break-word;   /* break long words if needed */
+  overflow-wrap: anywhere;  /* allow breaking long tokens */
+}
+
+/* Left align headers and values for clarity */
+.responsive-table th {
+  text-align: left;
+}
 .responsive-table td {
-  border-bottom: 1px solid var(--border-color);
-  padding: 0.6rem 0.8rem;
   text-align: left;
 }
 
-.responsive-table th {
-  color: var(--accent-color);
-  text-transform: capitalize;
-  letter-spacing: 0.4px;
+.card {
+  min-height: auto; /* allow card to grow with content */
 }
 
-.responsive-table tr:hover {
-  background-color: var(--hover-color);
+/* Make the label column narrow and let the value column take remaining space */
+.responsive-table th:first-child,
+.responsive-table td:first-child {
+  width: 30%;
+  max-width: 30%;
+  white-space: nowrap; /* keep field labels on one line */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* ------------------- */
-/* STATUS TEXT         */
-/* ------------------- */
-
-.loading {
-  color: var(--muted-color);
-  font-style: italic;
+.responsive-table td:nth-child(2) {
+  width: 70%;
 }
 
-.error-text {
-  color: #ff6565;
-  font-weight: 500;
+/* Ensure the card/container can expand horizontally if layout allows */
+.card {
+  width: 100%;
+  box-sizing: border-box;
 }
 
-/* ------------------- */
-/* RESPONSIVE          */
-/* ------------------- */
+.loading { color: var(--c-text-tertiary); font-style: italic; }
+.error-text { color: #ff6565; font-weight: 600; }
 
 @media (max-width: 700px) {
-  .nav-links {
-    gap: 1rem;
-    font-size: 0.9rem;
-  }
-  .container {
-    width: 95%;
-    padding: 0 0.5rem;
-  }
-  .card {
-    padding: 1rem 1.25rem;
-  }
+  .tiles { grid-template-columns: 1fr; }
+}
+
+/* Tighten spacing specifically for the account service-section to override global styles */
+.service-section > h2 {
+  margin: 0 0 0.35rem 0;
+  font-size: 1.25rem;
+  color: var(--c-text-primary);
+}
+
+.service-section .card .card-title {
+  margin-top: 0.25rem; /* pull card title closer to section heading */
+  margin-bottom: 0.25rem;
 }
