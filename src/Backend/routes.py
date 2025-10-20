@@ -18,11 +18,13 @@ def login_page():
     return render_template('login.html')
 
 @routes_bp.route('/market')
+@token_required
 def market():
     api_response = get_fake_store_data()
     return render_template('market.html', api_data=api_response)
 
 @routes_bp.route('/about')
+@token_required
 def about_page():
     return render_template('about.html')
 
@@ -31,6 +33,7 @@ def register_page():
     return render_template('register.html')
 
 @routes_bp.route('/home')
+@token_required
 def home_page():
     return render_template('landing_page.html')
 
@@ -47,6 +50,7 @@ def about_api():
         return jsonify({'error': 'No data found'}), 404
  
 @routes_bp.route('/account')
+@token_required
 def account_page():
     return render_template('account.html')
 
