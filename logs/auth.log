@@ -1,0 +1,77 @@
+[2025-10-16 05:31:39,114] [INFO] root: ROOT logger initialized; level=DEBUG
+[2025-10-16 05:31:39,114] [INFO] root: Handler active: StreamHandler, level=DEBUG
+[2025-10-16 05:31:39,114] [INFO] root: Handler active: FileHandler, level=DEBUG
+[2025-10-16 05:31:39,120] [INFO] __main__: Startup ENV => AUTH_LOG_LEVEL=DEBUG, AUTH_LOG_FILE=/var/log/app/auth.log
+[2025-10-16 05:31:39,169] [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.17.0.2:5000
+[2025-10-16 05:31:39,170] [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+[2025-10-16 05:31:53,455] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:31:53] "GET / HTTP/1.1" 200 -
+[2025-10-16 05:31:53,542] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:31:53] "GET /static/js/register.js HTTP/1.1" 200 -
+[2025-10-16 05:31:53,542] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:31:53] "GET /static/css/register.css HTTP/1.1" 200 -
+[2025-10-16 05:31:53,884] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:31:53] "[33mGET /favicon.ico HTTP/1.1[0m" 404 -
+[2025-10-16 05:32:18,170] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:18] "[33mGET /home HTTP/1.1[0m" 404 -
+[2025-10-16 05:32:22,269] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:22] "GET / HTTP/1.1" 200 -
+[2025-10-16 05:32:22,364] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:22] "[36mGET /static/js/register.js HTTP/1.1[0m" 304 -
+[2025-10-16 05:32:22,365] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:22] "GET /static/css/register.css HTTP/1.1" 200 -
+[2025-10-16 05:32:34,220] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:34] "GET /about HTTP/1.1" 200 -
+[2025-10-16 05:32:34,260] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:34] "GET /static/css/about.css HTTP/1.1" 200 -
+[2025-10-16 05:32:34,260] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:34] "GET /static/js/about.js HTTP/1.1" 200 -
+[2025-10-16 05:32:34,782] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:34] "GET /api/about HTTP/1.1" 200 -
+[2025-10-16 05:32:45,603] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:45] "GET /login HTTP/1.1" 200 -
+[2025-10-16 05:32:45,658] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:45] "GET /static/js/login.js HTTP/1.1" 200 -
+[2025-10-16 05:32:45,658] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:45] "GET /static/css/login.css HTTP/1.1" 200 -
+[2025-10-16 05:32:47,851] [INFO] POST /api/login payload => {'username': 'test@classic.com', 'password': '***REDACTED***'}
+[2025-10-16 05:32:47,851] [INFO] auth: POST /api/login payload => {'username': 'test@classic.com', 'password': '***REDACTED***'}
+[2025-10-16 05:32:48,067] [INFO] DB identity => database=DATABASE() host=@@hostname current_user=CURRENT_USER()
+[2025-10-16 05:32:48,067] [INFO] auth: DB identity => database=DATABASE() host=@@hostname current_user=CURRENT_USER()
+[2025-10-16 05:32:48,068] [DEBUG] fetch credentials: SQL => SELECT user_id, password FROM user_credentials WHERE username = %s  PARAMS => ('test@classic.com',)
+[2025-10-16 05:32:48,068] [DEBUG] auth: fetch credentials: SQL => SELECT user_id, password FROM user_credentials WHERE username = %s  PARAMS => ('test@classic.com',)
+[2025-10-16 05:32:48,094] [INFO] fetch credentials: rowcount => -1
+[2025-10-16 05:32:48,094] [INFO] auth: fetch credentials: rowcount => -1
+[2025-10-16 05:32:48,200] [INFO] Login success: user_id=9
+[2025-10-16 05:32:48,200] [INFO] auth: Login success: user_id=9
+[2025-10-16 05:32:48,419] [DEBUG] DB connection closed (login)
+[2025-10-16 05:32:48,419] [DEBUG] auth: DB connection closed (login)
+[2025-10-16 05:32:48,420] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:48] "POST /api/login HTTP/1.1" 200 -
+[2025-10-16 05:32:49,818] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:49] "GET /about HTTP/1.1" 200 -
+[2025-10-16 05:32:49,865] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:49] "[36mGET /static/js/about.js HTTP/1.1[0m" 304 -
+[2025-10-16 05:32:49,867] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:49] "[36mGET /static/css/about.css HTTP/1.1[0m" 304 -
+[2025-10-16 05:32:50,087] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:32:50] "GET /api/about HTTP/1.1" 200 -
+[2025-10-16 05:33:22,739] [INFO] POST /api/login payload => {'username': 'test@classic.com', 'password': '***REDACTED***'}
+[2025-10-16 05:33:22,739] [INFO] auth: POST /api/login payload => {'username': 'test@classic.com', 'password': '***REDACTED***'}
+[2025-10-16 05:33:22,969] [INFO] DB identity => database=DATABASE() host=@@hostname current_user=CURRENT_USER()
+[2025-10-16 05:33:22,969] [INFO] auth: DB identity => database=DATABASE() host=@@hostname current_user=CURRENT_USER()
+[2025-10-16 05:33:22,970] [DEBUG] fetch credentials: SQL => SELECT user_id, password FROM user_credentials WHERE username = %s  PARAMS => ('test@classic.com',)
+[2025-10-16 05:33:22,970] [DEBUG] auth: fetch credentials: SQL => SELECT user_id, password FROM user_credentials WHERE username = %s  PARAMS => ('test@classic.com',)
+[2025-10-16 05:33:22,992] [INFO] fetch credentials: rowcount => -1
+[2025-10-16 05:33:22,992] [INFO] auth: fetch credentials: rowcount => -1
+[2025-10-16 05:33:23,104] [INFO] Login success: user_id=9
+[2025-10-16 05:33:23,104] [INFO] auth: Login success: user_id=9
+[2025-10-16 05:33:23,308] [DEBUG] DB connection closed (login)
+[2025-10-16 05:33:23,308] [DEBUG] auth: DB connection closed (login)
+[2025-10-16 05:33:23,309] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:33:23] "POST /api/login HTTP/1.1" 200 -
+[2025-10-16 05:33:24,213] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:33:24] "GET /about HTTP/1.1" 200 -
+[2025-10-16 05:33:24,260] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:33:24] "[36mGET /static/css/about.css HTTP/1.1[0m" 304 -
+[2025-10-16 05:33:24,261] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:33:24] "[36mGET /static/js/about.js HTTP/1.1[0m" 304 -
+[2025-10-16 05:33:24,488] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:33:24] "GET /api/about HTTP/1.1" 200 -
+[2025-10-16 05:33:27,752] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:33:27] "[33mGET /account HTTP/1.1[0m" 404 -
+[2025-10-16 05:36:55,502] [INFO] root: ROOT logger initialized; level=DEBUG
+[2025-10-16 05:36:55,503] [INFO] root: Handler active: StreamHandler, level=DEBUG
+[2025-10-16 05:36:55,503] [INFO] root: Handler active: FileHandler, level=DEBUG
+[2025-10-16 05:36:55,507] [INFO] __main__: Startup ENV => AUTH_LOG_LEVEL=DEBUG, AUTH_LOG_FILE=/var/log/app/auth.log
+[2025-10-16 05:36:55,544] [INFO] werkzeug: [31m[1mWARNING: This is a development server. Do not use it in a production deployment. Use a production WSGI server instead.[0m
+ * Running on all addresses (0.0.0.0)
+ * Running on http://127.0.0.1:5000
+ * Running on http://172.17.0.2:5000
+[2025-10-16 05:36:55,544] [INFO] werkzeug: [33mPress CTRL+C to quit[0m
+[2025-10-16 05:36:59,843] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:36:59] "[33mGET /account HTTP/1.1[0m" 404 -
+[2025-10-16 05:37:03,301] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:37:03] "GET / HTTP/1.1" 200 -
+[2025-10-16 05:37:03,381] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:37:03] "GET /static/css/register.css HTTP/1.1" 200 -
+[2025-10-16 05:37:03,381] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:37:03] "GET /static/js/register.js HTTP/1.1" 200 -
+[2025-10-16 05:37:08,158] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:37:08] "GET /about HTTP/1.1" 200 -
+[2025-10-16 05:37:08,213] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:37:08] "GET /static/css/about.css HTTP/1.1" 200 -
+[2025-10-16 05:37:08,213] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:37:08] "GET /static/js/about.js HTTP/1.1" 200 -
+[2025-10-16 05:37:08,536] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:37:08] "GET /api/about HTTP/1.1" 200 -
+[2025-10-16 05:37:13,367] [INFO] werkzeug: 172.17.0.1 - - [16/Oct/2025 05:37:13] "[33mGET /home HTTP/1.1[0m" 404 -

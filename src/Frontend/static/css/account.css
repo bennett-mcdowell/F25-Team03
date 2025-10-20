@@ -1,143 +1,97 @@
-/* ===== Account Page Styles (matches existing theme) ===== */
+@import url('style.css');
 
-/* Header */
-.page-header {
-  background-color: #2c3e50;
-  color: #fff;
-  padding: 1.25rem 2rem;
-  box-shadow: 0 2px 6px rgba(0,0,0,0.12);
-}
-.page-header h1 {
-  margin: 0;
-  font-size: 1.6rem;
-  letter-spacing: 0.3px;
-  font-weight: 700;
+/* Account page overrides that follow the global theme in style.css */
+
+.service-section {
+  grid-column: 2 / span 1;
 }
 
-/* Layout container */
-.container {
-  max-width: 1100px;
-  margin: 1.25rem auto;
-  padding: 0 1rem;
+.card, .tile {
+  background-color: var(--c-gray-700);
+  color: var(--c-text-primary);
+  border-radius: 10px;
+  padding: 1rem 1.25rem;
+  border: 1px solid var(--c-gray-600);
 }
 
-/* Card */
-.card {
-  background: #fff;
-  border-radius: 8px;
-  box-shadow: 0 2px 5px rgba(0,0,0,0.1);
-  padding: 1.25rem 1.25rem 1rem;
+/* Override global small-card layout from style.css for full-width account cards */
+.service-section .card {
+  width: 100% !important;
+  padding: 1rem 1.25rem !important;
+  aspect-ratio: auto !important;
+  flex-shrink: 0;
+  display: block; /* use block layout so table flows naturally */
 }
-.card + .card {
-  margin-top: 1rem;
-}
+
 .card-title {
-  margin: 0 0 0.75rem 0;
+  color: var(--c-text-primary);
   font-size: 1.1rem;
-  font-weight: 700;
-  color: #2c3e50;
-  position: relative;
-}
-.card-title::after {
-  content: "";
-  display: block;
-  width: 44px;
-  height: 3px;
-  background: #27ae60;
-  border-radius: 2px;
-  margin-top: 0.5rem;
+  margin: 0 0 0.35rem 0; /* tightened spacing */
+  border-bottom: none;
 }
 
-/* Responsive table wrapper */
-.responsive-table {
-  width: 100%;
-  overflow-x: auto;             /* graceful on small screens */
-  -webkit-overflow-scrolling: touch;
-  border-radius: 6px;
-  border: 1px solid #eceff3;
-}
-
-/* Table styles (apply when your JS injects <table>) */
 .responsive-table table {
   width: 100%;
   border-collapse: collapse;
-  min-width: 580px;             /* keep columns readable */
-  background: #fff;
-  font-size: 0.95rem;
+  table-layout: auto; /* allow columns to size to content and wrap */
 }
-.responsive-table th,
-.responsive-table td {
-  padding: 0.75rem 0.9rem;
-  text-align: left;
-  border-bottom: 1px solid #eef1f4;
-  color: #2c3e50;
+
+.responsive-table th, .responsive-table td {
+  padding: 0.35rem 0.5rem; /* tighter padding to bring table closer to title */
+  border-bottom: 1px solid var(--c-gray-600);
+  color: var(--c-text-primary);
+  white-space: normal;      /* allow wrapping */
+  word-break: break-word;   /* break long words if needed */
+  overflow-wrap: anywhere;  /* allow breaking long tokens */
 }
+
+/* Left align headers and values for clarity */
 .responsive-table th {
-  background: #f4f6f8;
-  font-weight: 700;
-  color: #2c3e50;
-  white-space: nowrap;
+  text-align: left;
 }
-.responsive-table tr:hover td {
-  background: #fafbfc;
+.responsive-table td {
+  text-align: left;
 }
 
-/* Subtle badges/labels if you add any */
-.badge {
-  display: inline-block;
-  padding: 0.2rem 0.5rem;
-  border-radius: 999px;
-  background: #eaf7ef;
-  color: #27ae60;
-  font-size: 0.8rem;
-  font-weight: 700;
+.card {
+  min-height: auto; /* allow card to grow with content */
 }
 
-/* Utility */
-.hidden { display: none !important; }
-
-/* Spacing helpers */
-.mt-1 { margin-top: 0.5rem; }
-.mt-2 { margin-top: 1rem; }
-.mt-3 { margin-top: 1.5rem; }
-
-/* Buttons (optional, matches theme) */
-.btn {
-  display: inline-flex;
-  align-items: center;
-  gap: 0.4rem;
-  padding: 0.55rem 0.9rem;
-  border-radius: 6px;
-  border: 1px solid transparent;
-  font-weight: 700;
-  cursor: pointer;
-  background: #2c3e50;
-  color: #fff;
-  transition: transform 0.02s ease, box-shadow 0.2s ease, background 0.2s ease;
-}
-.btn:hover {
-  background: #33495f;
-  box-shadow: 0 2px 8px rgba(0,0,0,0.12);
-}
-.btn:active {
-  transform: translateY(1px);
-}
-.btn--ghost {
-  background: #fff;
-  color: #2c3e50;
-  border-color: #dfe6ee;
-}
-.btn--success {
-  background: #27ae60;
-}
-.btn--success:hover {
-  background: #239b55;
+/* Make the label column narrow and let the value column take remaining space */
+.responsive-table th:first-child,
+.responsive-table td:first-child {
+  width: 30%;
+  max-width: 30%;
+  white-space: nowrap; /* keep field labels on one line */
+  overflow: hidden;
+  text-overflow: ellipsis;
 }
 
-/* Responsive tweaks */
-@media (max-width: 768px) {
-  .page-header { padding: 1rem 1.25rem; }
-  .container { padding: 0 0.75rem; }
-  .card { padding: 1rem; }
-  .card-title { font-size: 1.05rem; }
+.responsive-table td:nth-child(2) {
+  width: 70%;
+}
+
+/* Ensure the card/container can expand horizontally if layout allows */
+.card {
+  width: 100%;
+  box-sizing: border-box;
+}
+
+.loading { color: var(--c-text-tertiary); font-style: italic; }
+.error-text { color: #ff6565; font-weight: 600; }
+
+@media (max-width: 700px) {
+  .tiles { grid-template-columns: 1fr; }
+}
+
+/* Tighten spacing specifically for the account service-section to override global styles */
+.service-section > h2 {
+  margin: 0 0 0.35rem 0;
+  font-size: 1.25rem;
+  color: var(--c-text-primary);
+}
+
+.service-section .card .card-title {
+  margin-top: 0.25rem; /* pull card title closer to section heading */
+  margin-bottom: 0.25rem;
 }

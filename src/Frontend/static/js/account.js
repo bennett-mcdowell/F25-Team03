@@ -1,161 +1,161 @@
-// static/js/account.js
 (function () {
-  // ---- Config ----
-  const TOKEN_STORAGE_KEY = "auth_token"; // change if your login saves under a different key
-  const LOGIN_PATH = "/login";
-
-  // ---- Helpers ----
-  function getToken() {
-    // Swap for sessionStorage or cookie read if that's your setup
-    return localStorage.getItem(TOKEN_STORAGE_KEY);
-  }
-
-  function redirectToLogin() {
-    try {
-      localStorage.removeItem(TOKEN_STORAGE_KEY);
-    } catch (_) {}
-    window.location.href = LOGIN_PATH;
-  }
-
   function setLoading(el, text = "Loading…") {
-    if (!el) return;
-    el.innerHTML = `<div class="loading">${escapeHTML(text)}</div>`;
+    if (el) el.innerHTML = `<div class="loading">${escapeHTML(text)}</div>`;
   }
-
   function setError(el, text = "Could not load this section.") {
-    if (!el) return;
-    el.innerHTML = `<p class="error-text">${escapeHTML(text)}</p>`;
+    if (el) el.innerHTML = `<p class="error-text">${escapeHTML(text)}</p>`;
   }
-
   function escapeHTML(s) {
-    if (s === null || s === undefined) return "";
+    if (s == null) return "";
     return String(s)
-      .replace(/&/g, "&amp;")
-      .replace(/</g, "&lt;")
-      .replace(/>/g, "&gt;")
-      .replace(/"/g, "&quot;")
+      .replace(/&/g, "&amp;").replace(/</g, "&lt;")
+      .replace(/>/g, "&gt;").replace(/"/g, "&quot;")
       .replace(/'/g, "&#039;");
   }
 
-  // Build a simple two-column table from a flat object
   function objectToTable(obj) {
     if (!obj || typeof obj !== "object") {
       return `<div class="responsive-table"><table><tbody><tr><td>No data</td></tr></tbody></table></div>`;
     }
-    const rows = Object.entries(obj).map(([k, v]) => {
-      return `<tr>
-        <th>${escapeHTML(k)}</th>
-        <td>${escapeHTML(v)}</td>
-      </tr>`;
-    }).join("");
-    return `
-      <div class="responsive-table">
-        <table>
-          <thead><tr><th>Field</th><th>Value</th></tr></thead>
-          <tbody>${rows}</tbody>
-        </table>
-      </div>`;
+    const rows = Object.entries(obj).map(([k, v]) =>
+      `<tr><th>${escapeHTML(k)}</th><td>${escapeHTML(v)}</td></tr>`
+    ).join("");
+    return `<div class="responsive-table"><table>
+      <thead><tr><th>Field</th><th>Value</th></tr></thead>
+      <tbody>${rows}</tbody></table></div>`;
   }
-
-  // Build a table from array-of-objects (fallback if backend ever returns arrays)
   function arrayToTable(arr) {
     if (!Array.isArray(arr) || arr.length === 0) {
       return `<div class="responsive-table"><table><tbody><tr><td>No data</td></tr></tbody></table></div>`;
     }
-    const cols = Array.from(
-      arr.reduce((set, row) => {
-        Object.keys(row || {}).forEach((k) => set.add(k));
-        return set;
-      }, new Set())
-    );
-
-    const thead = `<thead><tr>${cols.map(c => `<th>${escapeHTML(c)}</th>`).join("")}</tr></thead>`;
-    const tbody = `<tbody>${arr.map(row => {
-      return `<tr>${cols.map(c => `<td>${escapeHTML(row?.[c])}</td>`).join("")}</tr>`;
-    }).join("")}</tbody>`;
-
+    const cols = Array.from(arr.reduce((s, r) => { Object.keys(r||{}).forEach(k=>s.add(k)); return s;}, new Set()));
+    const thead = `<thead><tr>${cols.map(c=>`<th>${escapeHTML(c)}</th>`).join("")}</tr></thead>`;
+    const tbody = `<tbody>${arr.map(r => `<tr>${cols.map(c => `<td>${escapeHTML(r?.[c])}</td>`).join("")}</tr>`).join("")}</tbody>`;
     return `<div class="responsive-table"><table>${thead}${tbody}</table></div>`;
   }
-
-  // Renderers for the three cards
   function renderUser(user) {
-    const mount = document.getElementById("account-user");
-    if (!mount) return;
-    if (!user) {
-      setError(mount, "No user profile found.");
-      return;
-    }
-    mount.innerHTML = objectToTable(user);
+    const el = document.getElementById("account-user");
+    if (!el) return;
+    if (!user) return setError(el, "No user profile found.");
+    el.innerHTML = objectToTable(user);
   }
-
   function renderType(typeInfo) {
-    const mount = document.getElementById("account-type");
-    if (!mount) return;
-    if (!typeInfo) {
-      setError(mount, "No account type found.");
-      return;
-    }
-    // If backend returns a flat object
-    if (typeof typeInfo === "object" && !Array.isArray(typeInfo)) {
-      mount.innerHTML = objectToTable(typeInfo);
-    } else {
-      // fallback for arrays
-      mount.innerHTML = arrayToTable(typeInfo);
-    }
+    const el = document.getElementById("account-type");
+    if (!el) return;
+    if (!typeInfo) return setError(el, "No account type found.");
+    el.innerHTML = (typeof typeInfo === "object" && !Array.isArray(typeInfo))
+      ? objectToTable(typeInfo) : arrayToTable(typeInfo);
   }
-
   function renderRole(roleName, roleData) {
     const title = document.getElementById("role-title");
-    const mount = document.getElementById("account-role");
-    if (!title || !mount) return;
+    const el = document.getElementById("account-role");
+    if (!title || !el) return;
 
     if (!roleName) {
-      // Hide role section if no role
       title.style.display = "none";
-      mount.innerHTML = `<div class="responsive-table"><table><tbody><tr><td>No role data.</td></tr></tbody></table></div>`;
+      el.innerHTML = `<div class="responsive-table"><table><tbody><tr><td>No role data.</td></tr></tbody></table></div>`;
       return;
     }
-
-    // Title
     title.textContent = roleName;
     title.style.display = "block";
 
-    if (!roleData) {
-      setError(mount, `No ${roleName} details found.`);
-      return;
-    }
-
-    if (typeof roleData === "object" && !Array.isArray(roleData)) {
-      mount.innerHTML = objectToTable(roleData);
-    } else {
-      mount.innerHTML = arrayToTable(roleData);
-    }
+    if (!roleData) return setError(el, `No ${roleName} details found.`);
+    el.innerHTML = (typeof roleData === "object" && !Array.isArray(roleData))
+      ? objectToTable(roleData) : arrayToTable(roleData);
   }
 
-  // ---- Fetch & flow ----
+// Sponsor-only: wire up bulk driver upload UI
+function initSponsorBulkTools(roleName) {
+  const shell = document.getElementById("sponsor-bulk-tools");
+  if (!shell) return;
+  if (roleName !== "Sponsor") {
+    shell.style.display = "none";
+    return;
+  }
+  shell.style.display = "block";
+
+  const input = document.getElementById("bulk-file");
+  const dryRun = document.getElementById("dry-run");
+  const btn = document.getElementById("bulk-upload-btn");
+  const out = document.getElementById("bulk-results");
+
+  const token = localStorage.getItem("jwt");
+  btn.onclick = async () => {
+    out.innerHTML = "<p class='loading'>Uploading and processing…</p>";
+    if (!input.files || input.files.length === 0) {
+      out.innerHTML = "<p class='error-text'>Choose a file first.</p>";
+      return;
+    }
+    const fd = new FormData();
+    fd.append("file", input.files[0]);
+    fd.append("dry_run", dryRun.checked ? "1" : "0");
+
+    try {
+      const res = await fetch("/api/sponsor/bulk_drivers", {
+        method: "POST",
+        headers: { "Authorization": `Bearer ${token}` },
+        body: fd
+      });
+      const data = await res.json().catch(() => ({}));
+
+      if (!res.ok) {
+        out.innerHTML = `<p class='error-text'>${data.error || `Request failed (${res.status})`}</p>`;
+        return;
+      }
+
+      // Pretty print results
+      const lines = [];
+      lines.push(`Processed: ${data.processed}  |  Success: ${data.success}  |  Errors: ${data.errors}`);
+      if (data.warnings && data.warnings.length) {
+        lines.push("\nWarnings:");
+        data.warnings.forEach(w => lines.push(` • ${w}`));
+      }
+      if (data.rows && data.rows.length) {
+        lines.push("\nDetails:");
+        data.rows.forEach(r => {
+          const tag = r.ok ? "ok" : "err";
+          lines.push(` - line ${r.line}: [${r.type}] ${r.email || ""}  ->  <${tag}> ${r.message}`);
+        });
+      }
+      out.innerHTML = `<pre>${lines.join("\n")}</pre>`;
+    } catch (e) {
+      console.error(e);
+      out.innerHTML = "<p class='error-text'>Network error.</p>";
+      }
+    };
+  }
+
   async function fetchAccount() {
-    const token = getToken();
     const userEl = document.getElementById("account-user");
     const typeEl = document.getElementById("account-type");
     const roleEl = document.getElementById("account-role");
 
-    // Initial loading states
     setLoading(userEl);
     setLoading(typeEl);
     setLoading(roleEl);
 
+    const token = (window.Auth && typeof window.Auth.getToken === 'function')
+      ? window.Auth.getToken()
+      : localStorage.getItem('jwt');
+
     if (!token) {
-      redirectToLogin();
+      console.warn('fetchAccount: no auth token available; redirecting to /login');
+      setError(userEl, 'Not authenticated. Redirecting to login...');
+      setError(typeEl, 'Not authenticated.');
+      setError(roleEl, 'Not authenticated.');
+      setTimeout(() => { window.location.href = '/login'; }, 400);
       return;
     }
 
+    try { console.debug('fetchAccount: sending request with token (len):', token.length); } catch (e) {}
+
     let res;
     try {
-      res = await fetch("/api/account", {
-        method: "GET",
+      res = await fetch('/api/account', {
+        method: 'GET',
         headers: {
-          "Authorization": `Bearer ${token}`,
-          "Accept": "application/json"
+          'Authorization': `Bearer ${token}`,
+          'Accept': 'application/json'
         }
       });
     } catch (e) {
@@ -167,7 +167,7 @@
     }
 
     if (res.status === 401) {
-      redirectToLogin();
+      window.location.href = '/login';
       return;
     }
     if (!res.ok) {
@@ -179,13 +179,11 @@
     }
 
     const data = await res.json();
-
-    // Expecting: { user: {}, type: {}, role_name: "Admin|Sponsor|Driver", role: {} }
     renderUser(data.user || null);
     renderType(data.type || null);
     renderRole(data.role_name || null, data.role || null);
+    initSponsorBulkTools(data.role_name || null);
   }
 
-  // ---- init ----
   document.addEventListener("DOMContentLoaded", fetchAccount);
 })();

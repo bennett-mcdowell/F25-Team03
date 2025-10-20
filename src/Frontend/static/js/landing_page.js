@@ -22,19 +22,4 @@ document.addEventListener("DOMContentLoaded", () => {
         `;
         catalogContainer.appendChild(card);
     });
-
-    // About page
-    document.getElementById("aboutBtn").addEventListener("click", () => {
-        window.location.href = "/about";
-    });
-
-    // Logout (works for both header and sidebar)
-    const logoutBtns = document.querySelectorAll("#logoutBtn, #logoutBtnSidebar");
-    logoutBtns.forEach(btn => {
-        btn.addEventListener("click", () => {
-            localStorage.removeItem('jwt');
-            sessionStorage.removeItem("loggedIn");
-            window.location.href = "/";
-        });
-    });
 });

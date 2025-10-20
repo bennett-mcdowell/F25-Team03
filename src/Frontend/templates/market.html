@@ -3,62 +3,62 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Product Catalog</title>
-    <link rel="stylesheet" href="{{ url_for('static', filename='css/market.css') }}">
+        <title>Product Catalog</title>
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+        <link rel="stylesheet" href="{{ url_for('static', filename='css/market.css') }}">
+        <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+        <script>Auth.requireAuth('/login');</script>
 </head>
 <body>
-    <!-- Navigation -->
-    <nav class="navbar">
-        <div class="logo">Product Catalog</div>
-        <ul class="nav-links">
-            <li><a href="#" id="homeBtn">Home</a></li>
-        </ul>
-    </nav>
-    
-    <div class="container"> 
-        {% if api_data %}
-            <div class="header-section">
-                <h1>Browse Products</h1>
-                <p class="subtitle">{{ api_data.products|length }} items available</p>
-            </div>
-            
-            {% if api_data.error %}
-                <p style="color: red;"><strong>Error:</strong> {{ api_data.error }}</p>
-            {% elif api_data.products and api_data.products|length > 0 %}
-                <div class="product-grid">
-                    {% for product in api_data.products %}
-                        <div class="product-card">
-                            <div class="image-container">
-                                <img src="{{ product.image }}" alt="{{ product.title }}">
-                            </div>
-                            <div class="card-content">
-                                <h3>{{ product.title }}</h3>
-                                <div class="rating">
-                                    {% set rating = product.rating.rate %}
-                                    {% for i in range(5) %}
-                                        {% if i < rating|int %}
-                                            <span class="star filled">★</span>
-                                        {% elif i < rating %}
-                                            <span class="star half">★</span>
-                                        {% else %}
-                                            <span class="star">★</span>
-                                        {% endif %}
-                                    {% endfor %}
-                                    <span class="rating-count">({{ product.rating.count }})</span>
-                                </div>
-                                <p class="description">{{ product.description[:120] }}...</p>
-                                <p class="price">{{ (product.price * 100)|int }} points</p>
-                                <button class="view-details-btn">Purchase</button>
-                            </div>
-                        </div>
-                    {% endfor %}
+    <div class="responsive-wrapper">
+        <div class="app">
+            <!-- Header -->
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-title">
+                        <span>Catalog</span>
+                    </div>
                 </div>
-            {% else %}
-                <p>No products available</p>
-            {% endif %}
-        {% endif %}
+            </header>
+
+            <!-- Body -->
+            <main class="app-body">
+                {% include 'partials/_sidebar.html' %}
+
+                <!-- Main Content -->
+                <section class="service-section">
+                    <h2>Browse Products</h2>
+                    <p class="subtitle">{% if api_data and api_data.products %}{{ api_data.products|length }} items available{% endif %}</p>
+
+                    {% if api_data %}
+                        {% if api_data.error %}
+                            <p style="color: red;"><strong>Error:</strong> {{ api_data.error }}</p>
+                        {% elif api_data.products and api_data.products|length > 0 %}
+                            <div class="tiles" id="productCatalog">
+                                {% for product in api_data.products %}
+                                    <div class="tile">
+                                        <div class="tile-header">
+                                            <h3>{{ product.title }}</h3>
+                                        </div>
+                                        <div class="card-content">
+                                            <div class="image-container"><img src="{{ product.image }}" alt="{{ product.title }}"></div>
+                                            <p class="description">{{ product.description[:120] }}...</p>
+                                            <p class="price">{{ (product.price * 100)|int }} points</p>
+                                            <button class="view-details-btn">Purchase</button>
+                                        </div>
+                                    </div>
+                                {% endfor %}
+                            </div>
+                        {% else %}
+                            <p>No products available</p>
+                        {% endif %}
+                    {% endif %}
+                </section>
+            </main>
+        </div>
     </div>
-    
+
     <script src="{{ url_for('static', filename='js/market.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
 </body>
 </html>

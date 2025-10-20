@@ -21,7 +21,15 @@ document.addEventListener('DOMContentLoaded', function () {
                 const data = await response.json();
                 if (response.ok) {
                     if (data.token) {
-                        localStorage.setItem('jwt', data.token);
+                        try {
+                            if (window.Auth && typeof window.Auth.saveToken === 'function') {
+                                window.Auth.saveToken(data.token);
+                            } else {
+                                localStorage.setItem('jwt', data.token);
+                            }
+                        } catch (e) {
+                            localStorage.setItem('jwt', data.token);
+                        }
                     }
                     alert('Login successful!');
                     window.location.href = '/home'; // redirect after login

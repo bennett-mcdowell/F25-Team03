@@ -9,13 +9,13 @@ from services import get_fake_store_data
 routes_bp = Blueprint('routes', __name__)
 
 @routes_bp.route('/')
+def root_redirect():
+    # Redirect the root URL to /login
+    return redirect('/login')
+
 @routes_bp.route('/login')
 def login_page():
     return render_template('login.html')
-
-@routes_bp.route('/')
-def root_redirect():
-    return redirect('/login')
 
 @routes_bp.route('/market')
 def market():
