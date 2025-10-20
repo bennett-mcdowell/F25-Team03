@@ -67,6 +67,7 @@ document.addEventListener('DOMContentLoaded', function () {
             try {
                 const response = await fetch('/api/register', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({
                         firstname,

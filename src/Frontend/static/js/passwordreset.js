@@ -18,6 +18,7 @@ document.addEventListener('DOMContentLoaded', function () {
 
             const response = await fetch('/api/passwordreset', {
                 method: 'POST',
+                credentials: 'same-origin',
                 headers: {
                     'Content-Type': 'application/json'
                 },

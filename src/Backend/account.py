@@ -1,5 +1,6 @@
 # src/Backend/account.py
 from flask import Blueprint, jsonify, g, request
+import logging
 from utils.db import get_db_connection
 from auth import token_required
 import io
@@ -79,16 +80,35 @@ def account_api():
                 role_blob = dict(r)
 
         elif type_id == 3:  # Driver
-            cur.execute("""
-                SELECT d.driver_id, d.user_id, d.balance, d.sponsor_id,
-                       sp.name AS sponsor_name
-                FROM driver d
-                LEFT JOIN sponsor sp ON sp.sponsor_id = d.sponsor_id
-                WHERE d.user_id = %s
-            """, (user_id,))
-            r = cur.fetchone()
-            if r:
-                role_blob = dict(r)
+            # Defensive driver lookup: some DB instances may have different columns.
+            log = logging.getLogger('account')
+            try:
+                # Select all driver columns we have for this user. This avoids referring to
+                # specific columns that may be absent in some environments.
+                cur.execute("SELECT * FROM driver WHERE user_id = %s", (user_id,))
+                drow = cur.fetchone()
+                if drow:
+                    # Convert to dict (cursor is dictionary=True) and use as role blob.
+                    role_blob = dict(drow)
+
+                    # Try to resolve sponsor name if a sponsor id column exists.
+                    sponsor_col = None
+                    if 'sponsor_id' in drow:
+                        sponsor_col = 'sponsor_id'
+                    elif 'sponsorId' in drow:
+                        sponsor_col = 'sponsorId'
+
+                    if sponsor_col and drow.get(sponsor_col) is not None:
+                        try:
+                            cur.execute("SELECT sponsor_id, name FROM sponsor WHERE sponsor_id = %s", (drow.get(sponsor_col),))
+                            s = cur.fetchone()
+                            if s:
+                                role_blob['sponsor_name'] = s.get('name')
+                        except Exception as sx:
+                            log.warning('Failed to lookup sponsor name for driver: %s', sx)
+            except Exception as ex:
+                # If even selecting * from driver fails, log and continue without role blob.
+                log.error('Driver lookup failed: %s', ex)
 
         return jsonify({
             "user": user_data,
