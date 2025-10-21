@@ -246,3 +246,111 @@ body {
         padding: 30px 15px;
     }
 }
+
+
+#productCatalog {
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
+    grid-auto-rows: 1fr; /* make each row a uniform height */
+    gap: 1rem;
+    align-items: stretch;
+    justify-items: stretch;
+}
+
+#productCatalog .tile {
+    padding: 0;
+    background: linear-gradient(to bottom, #323232 0%, #252525 100%);
+    border-radius: 12px;
+    overflow: hidden;
+    box-shadow: 0 6px 18px rgba(0,0,0,0.5);
+    border: 1px solid rgba(255,255,255,0.06);
+    display: flex;
+    flex-direction: column;
+    transition: transform 0.25s ease, box-shadow 0.25s ease;
+    height: 100%;
+}
+
+#productCatalog .tile:hover {
+    transform: translateY(-6px);
+    box-shadow: 0 12px 34px rgba(0, 0, 0, 0.6);
+    border-color: rgba(102,126,234,0.12);
+}
+
+#productCatalog .tile .tile-header { padding: 0.75rem 1rem; min-height:48px; }
+#productCatalog .tile .card-content { padding: 0.9rem 1rem; display:flex; flex-direction:column; gap:8px; }
+
+#productCatalog .tile .image-container {
+    height: 150px;
+    padding: 10px;
+}
+
+#productCatalog .tile .image-container img {
+    max-width: 100%;
+    max-height: 100%;
+    width: auto;
+    height: 100%;
+    object-fit: contain;
+    display:block;
+    margin:0 auto;
+}
+
+#productCatalog .tile .card-content { flex: 1 1 auto; overflow: hidden; }
+#productCatalog .tile .description { overflow: hidden; display: -webkit-box; -webkit-line-clamp: 3; -webkit-box-orient: vertical; }
+
+#productCatalog .tile { box-sizing: border-box; }
+
+@media (max-width: 700px) {
+    #productCatalog { grid-template-columns: repeat(1, 1fr); }
+    #productCatalog .tile .image-container { height: 140px; }
+}
+
+.header-section h1,
+.service-section > h2 {
+    color: #ffffff;
+    text-shadow: 0 1px 0 rgba(0,0,0,0.6), 0 2px 8px rgba(0,0,0,0.45);
+}
+
+#productCatalog .tile .card-content h3,
+#productCatalog .tile .tile-header h3 {
+    color: #b0b0b0;
+    text-shadow: none;
+}
+
+#productCatalog .tile .card-content h3 { font-weight: 700; }
+
+/* NEW: Add to Cart button styling */
+.add-to-cart-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 0.5rem;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+}
+
+.add-to-cart-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* NEW: View Cart link in header */
+.view-cart-link {
+    color: var(--c-text-primary);
+    text-decoration: none;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    background: var(--c-gray-700);
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.view-cart-link:hover {
+    background: var(--c-gray-600);
+    transform: translateY(-2px);
+}

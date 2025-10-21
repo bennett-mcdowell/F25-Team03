@@ -6,6 +6,7 @@ from auth import token_required
 import io
 import re
 import secrets
+import datetime
 
 account_bp = Blueprint("account", __name__)
 
@@ -287,6 +288,124 @@ def sponsor_bulk_drivers():
     finally:
         if cur is not None:
             cur.close()
+        conn.close()
+
+@account_bp.route('/api/purchase', methods=['POST'])
+@token_required
+def purchase_api():
+    """
+    Process cart purchase:
+    - Verify driver has enough points
+    - Deduct points from balance
+    - Create transaction records
+    """
+    user_id = _claims_user_id()
+    
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    try:
+        user_id = int(user_id)
+    except Exception:
+        return jsonify({"error": "Invalid user ID"}), 401
+    
+    # Get cart items from request
+    data = request.get_json() or {}
+    cart_items = data.get('items', [])
+    
+    if not cart_items:
+        return jsonify({"error": "Cart is empty"}), 400
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        conn.autocommit = False
+        cur = conn.cursor(dictionary=True)
+        
+        # 1. Verify user is a driver
+        cur.execute("""
+            SELECT u.type_id, d.driver_id, d.balance, d.sponsor_id 
+            FROM `user` u
+            LEFT JOIN driver d ON u.user_id = d.user_id
+            WHERE u.user_id = %s
+        """, (user_id,))
+        user_data = cur.fetchone()
+        
+        if not user_data or user_data['type_id'] != 3:
+            return jsonify({"error": "Only drivers can make purchases"}), 403
+        
+        if not user_data['driver_id']:
+            return jsonify({"error": "Driver record not found"}), 404
+        
+        current_balance = float(user_data['balance'])
+        driver_id = user_data['driver_id']
+        sponsor_id = user_data['sponsor_id']
+        
+        # 2. Calculate total cost (items are already in points)
+        total_points = sum(item.get('price', 0) * item.get('quantity', 1) for item in cart_items)
+        total_dollars = total_points / 100.0  # Convert points back to dollars for DB
+        
+        # 3. Check if driver has enough balance
+        if current_balance < total_dollars:
+            return jsonify({
+                "error": "Insufficient balance",
+                "required": total_points,
+                "available": int(current_balance * 100),
+                "shortfall": int((total_dollars - current_balance) * 100)
+            }), 400
+        
+        # 4. Deduct from driver balance
+        new_balance = current_balance - total_dollars
+        cur.execute("""
+            UPDATE driver 
+            SET balance = %s 
+            WHERE driver_id = %s
+        """, (new_balance, driver_id))
+        
+        # 5. Create transaction records for each item
+        transaction_time = datetime.datetime.now()
+        for item in cart_items:
+            item_price_dollars = (item.get('price', 0) * item.get('quantity', 1)) / 100.0
+            cur.execute("""
+                INSERT INTO transactions (`date`, user_id, amount, item_id)
+                VALUES (%s, %s, %s, %s)
+            """, (
+                transaction_time,
+                user_id,
+                -item_price_dollars,  # Negative for purchases
+                item.get('id', None)  # Product ID from Fake Store API
+            ))
+        
+        # 6. Calculate 1% commission for sponsor (if sponsor exists)
+        if sponsor_id:
+            commission = total_dollars * 0.01
+            print(f"Commission of ${commission:.2f} for sponsor_id {sponsor_id}")
+        
+        conn.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Purchase completed successfully",
+            "items_purchased": len(cart_items),
+            "total_spent": total_points,
+            "new_balance": int(new_balance * 100),
+            "previous_balance": int(current_balance * 100)
+        }), 200
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error in /api/purchase: {e}")
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": f"Purchase failed: {str(e)}"}), 500
+        
+    finally:
+        if cur is not None:
+            cur.close()
+        if conn:
+            conn.close()
         conn.close()
 
 @account_bp.post("/api/admin/bulk_accounts")

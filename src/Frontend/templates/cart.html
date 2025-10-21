@@ -1,0 +1,43 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Shopping Cart</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/cart.css') }}">
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    <script>Auth.requireAuth('/login');</script>
+</head>
+<body>
+    <div class="responsive-wrapper">
+        <div class="app">
+            <header class="app-header">
+                <div class="logo">
+                    <div class="logo-title">
+                        <span>Shopping Cart</span>
+                    </div>
+                </div>
+            </header>
+
+            <main class="app-body">
+                {% include 'partials/_sidebar.html' %}
+
+                <section class="service-section">
+                    <div class="cart-container">
+                        <h2>Your Cart</h2>
+                        <div id="cart-items" class="cart-items"></div>
+                        <div class="cart-summary">
+                            <h3>Total: <span id="cart-total">0</span> points</h3>
+                            <button id="checkout-btn" class="checkout-btn">Checkout</button>
+                        </div>
+                    </div>
+                </section>
+            </main>
+        </div>
+    </div>
+
+    <script src="{{ url_for('static', filename='js/cart.js') }}"></script>
+    <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+</body>
+</html>
