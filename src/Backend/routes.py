@@ -50,6 +50,10 @@ def about_api():
 def account_page():
     return render_template('account.html')
 
+@routes_bp.route('/cart')
+def cart_page():
+    return render_template('cart.html')
+
 # @routes_bp.route('/api/register', methods=['POST'])
 # def register_api():
 #     return jsonify({'message': 'User registered successfully'}), 201

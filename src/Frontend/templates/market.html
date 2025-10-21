@@ -7,7 +7,7 @@
         <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
         <link rel="stylesheet" href="{{ url_for('static', filename='css/market.css') }}">
         <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
-        <script>Auth.requireAuth('/login');</script>
+        <!-- <script>Auth.requireAuth('/login');</script> -->
 </head>
 <body>
     <div class="responsive-wrapper">
@@ -18,6 +18,12 @@
                     <div class="logo-title">
                         <span>Catalog</span>
                     </div>
+                </div>
+                <!-- Cart button in header -->
+                <div style="margin-left: auto;">
+                    <a href="/cart" class="view-cart-link">
+                        🛒 View Cart
+                    </a>
                 </div>
             </header>
 
@@ -44,7 +50,13 @@
                                             <div class="image-container"><img src="{{ product.image }}" alt="{{ product.title }}"></div>
                                             <p class="description">{{ product.description[:120] }}...</p>
                                             <p class="price">{{ (product.price * 100)|int }} points</p>
-                                            <button class="view-details-btn">Purchase</button>
+                                            <button class="add-to-cart-btn" 
+                                                    data-id="{{ product.id }}"
+                                                    data-title="{{ product.title }}"
+                                                    data-price="{{ (product.price * 100)|int }}"
+                                                    data-image="{{ product.image }}">
+                                                Add to Cart
+                                            </button>
                                         </div>
                                     </div>
                                 {% endfor %}

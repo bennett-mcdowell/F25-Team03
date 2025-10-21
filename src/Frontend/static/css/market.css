@@ -308,3 +308,40 @@ body {
 }
 
 #productCatalog .tile .card-content h3 { font-weight: 700; }
+
+/* NEW: Add to Cart button styling */
+.add-to-cart-btn {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: white;
+    border: none;
+    padding: 10px 20px;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    width: 100%;
+    margin-top: 0.5rem;
+    transition: all 0.3s ease;
+    font-size: 0.95rem;
+}
+
+.add-to-cart-btn:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
+}
+
+/* NEW: View Cart link in header */
+.view-cart-link {
+    color: var(--c-text-primary);
+    text-decoration: none;
+    font-weight: 600;
+    padding: 0.5rem 1rem;
+    background: var(--c-gray-700);
+    border-radius: 6px;
+    transition: all 0.3s ease;
+    display: inline-block;
+}
+
+.view-cart-link:hover {
+    background: var(--c-gray-600);
+    transform: translateY(-2px);
+}
