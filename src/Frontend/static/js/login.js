@@ -1,4 +1,17 @@
 document.addEventListener('DOMContentLoaded', function () {
+    // If there's a valid session cookie, redirect to /home automatically.
+    (async function checkSignedIn() {
+        try {
+            const res = await fetch('/api/account', { method: 'GET', credentials: 'same-origin', headers: { 'Accept': 'application/json' } });
+            if (res.ok) {
+                // If account returns OK, redirect to landing/home automatically
+                window.location.href = '/home';
+                return;
+            }
+        } catch (e) {
+            // ignore network errors and let login proceed
+        }
+    })();
     const form = document.getElementById('loginForm');
     if (form) {
         form.addEventListener('submit', async function (e) {
@@ -13,25 +26,28 @@ document.addEventListener('DOMContentLoaded', function () {
             }
             errorDiv.style.display = 'none';
             try {
+                const remember = document.getElementById('check') ? document.getElementById('check').checked : false;
                 const response = await fetch('/api/login', {
                     method: 'POST',
+                    credentials: 'same-origin',
                     headers: { 'Content-Type': 'application/json' },
-                    body: JSON.stringify({ username, password })
+                    body: JSON.stringify({ username, password, remember })
                 });
                 const data = await response.json();
                 if (response.ok) {
-                    if (data.token) {
+                    // Backend sets an httpOnly cookie with the JWT; do not store token in localStorage.
+                    // The backend also returns the user's role for UI purposes in `data.role`.
+                    // Mark ephemeral session if the user did NOT ask to be remembered.
+                    if (!remember) {
                         try {
-                            if (window.Auth && typeof window.Auth.saveToken === 'function') {
-                                window.Auth.saveToken(data.token);
-                            } else {
-                                localStorage.setItem('jwt', data.token);
-                            }
-                        } catch (e) {
-                            localStorage.setItem('jwt', data.token);
-                        }
+                            sessionStorage.setItem('ephemeral', '1');
+                            // Skip the unload-logout that runs when navigating immediately after login.
+                            sessionStorage.setItem('skipUnloadLogout', '1');
+                        } catch (e) { /* ignore */ }
+                    } else {
+                        try { sessionStorage.removeItem('ephemeral'); } catch (e) { /* ignore */ }
                     }
-                    alert('Login successful!');
+                    // Login succeeded — redirect to app.
                     window.location.href = '/home'; // redirect after login
                 } else {
                     errorDiv.textContent = data.error || 'Login failed.';

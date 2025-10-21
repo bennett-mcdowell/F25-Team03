@@ -1,15 +1,13 @@
 // Sidebar helpers: wire logout from the sidebar to the central Auth helper.
 document.addEventListener('DOMContentLoaded', function () {
-  function doLogout() {
+  async function doLogout() {
     try {
-      if (window.Auth && typeof window.Auth.removeToken === 'function') {
-        window.Auth.removeToken();
-      } else {
-        localStorage.removeItem('jwt');
-      }
+      await fetch('/api/logout', { method: 'POST', credentials: 'same-origin' });
     } catch (e) {
-      try { localStorage.removeItem('jwt'); } catch (_) {}
+      console.warn('Logout request failed:', e);
     }
+    try { localStorage.removeItem('jwt'); } catch (e) { /* ignore */ }
+    try { sessionStorage.removeItem('ephemeral'); } catch (e) { /* ignore */ }
     window.location.href = '/login';
   }
 
@@ -39,4 +37,27 @@ document.addEventListener('DOMContentLoaded', function () {
       });
     });
   } catch (e) { }
+});
+
+// Attempt to logout ephemeral sessions when the window/tab is closed.
+window.addEventListener('beforeunload', function () {
+  try {
+    // If a 'skipUnloadLogout' flag is present (set immediately after login), skip one unload.
+    if (sessionStorage.getItem('skipUnloadLogout')) {
+      try { sessionStorage.removeItem('skipUnloadLogout'); } catch (e) { /* ignore */ }
+      return;
+    }
+    if (sessionStorage.getItem('ephemeral')) {
+      // Use sendBeacon for a best-effort background logout; some browsers may not send it reliably.
+      const url = '/api/logout';
+      if (navigator.sendBeacon) {
+        navigator.sendBeacon(url);
+      } else {
+        // Fallback: synchronous XHR (deprecated) — keep minimal.
+        const xhr = new XMLHttpRequest();
+        xhr.open('POST', url, false);
+        xhr.send(null);
+      }
+    }
+  } catch (e) { /* ignore errors during unload */ }
 });

@@ -1,4 +1,4 @@
-fetch('/api/about')
+fetch('/api/about', { credentials: 'same-origin' })
   .then(response => response.json())
   .then(data => {
     if (data.error) {

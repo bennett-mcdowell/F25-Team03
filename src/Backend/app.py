@@ -3,6 +3,7 @@ import logging
 from flask import Flask
 from flask_caching import Cache
 from flask_cors import CORS
+from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
 import base64
 import os
@@ -57,7 +58,18 @@ configure_logging()  # <<— initialize logging before anything logs
 
 
 app = Flask(__name__, static_folder='../Frontend/static', template_folder='../Frontend/templates')
-CORS(app)
+CORS(app, supports_credentials=True)
+
+# JWT configuration - use cookies for access tokens by default
+app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET', 'dev_secret')
+app.config['JWT_TOKEN_LOCATION'] = ['cookies']
+# Consider enabling CSRF protection for cookie-authenticated forms in production
+app.config['JWT_COOKIE_CSRF_PROTECT'] = False
+app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 24 * 3600
+app.config['JWT_COOKIE_SAMESITE'] = 'Lax'
+app.config['JWT_COOKIE_SECURE'] = os.getenv('COOKIE_SECURE', 'false').lower() == 'true'
+
+jwt = JWTManager(app)
 
 cache = Cache(app, config={'CACHE_TYPE': 'SimpleCache'})
 
