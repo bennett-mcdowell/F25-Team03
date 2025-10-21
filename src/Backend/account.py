@@ -80,34 +80,40 @@ def account_api():
                 role_blob = dict(r)
 
         elif type_id == 3:  # Driver
-            # Defensive driver lookup: some DB instances may have different columns.
             log = logging.getLogger('account')
             try:
-                # Select all driver columns we have for this user. This avoids referring to
-                # specific columns that may be absent in some environments.
-                cur.execute("SELECT * FROM driver WHERE user_id = %s", (user_id,))
+                # 1) Find this user's driver_id
+                cur.execute("SELECT driver_id FROM driver WHERE user_id = %s", (user_id,))
                 drow = cur.fetchone()
                 if drow:
-                    # Convert to dict (cursor is dictionary=True) and use as role blob.
-                    role_blob = dict(drow)
+                    driver_id = drow["driver_id"]
 
-                    # Try to resolve sponsor name if a sponsor id column exists.
-                    sponsor_col = None
-                    if 'sponsor_id' in drow:
-                        sponsor_col = 'sponsor_id'
-                    elif 'sponsorId' in drow:
-                        sponsor_col = 'sponsorId'
+                    # Minimal role blob (no legacy sponsor_id/balance here)
+                    role_blob = {"driver_id": driver_id}
 
-                    if sponsor_col and drow.get(sponsor_col) is not None:
-                        try:
-                            cur.execute("SELECT sponsor_id, name FROM sponsor WHERE sponsor_id = %s", (drow.get(sponsor_col),))
-                            s = cur.fetchone()
-                            if s:
-                                role_blob['sponsor_name'] = s.get('name')
-                        except Exception as sx:
-                            log.warning('Failed to lookup sponsor name for driver: %s', sx)
+                    # 2) Pull all sponsors (and per-pair balances) for this driver
+                    cur.execute("""
+                        SELECT
+                            ds.driver_sponsor_id,
+                            ds.balance,
+                            ds.status,
+                            ds.since_at,
+                            ds.until_at,
+                            s.sponsor_id,
+                            s.name,
+                            s.description
+                        FROM driver_sponsor ds
+                        JOIN sponsor s  ON s.sponsor_id = ds.sponsor_id
+                        WHERE ds.driver_id = %s
+                        ORDER BY s.name
+                    """, (driver_id,))
+                    sponsors = cur.fetchall() or []
+
+                    # 3) Attach to response + total balance
+                    role_blob["sponsors"] = sponsors
+                    role_blob["total_balance"] = float(sum((row.get("balance") or 0) for row in sponsors))
+
             except Exception as ex:
-                # If even selecting * from driver fails, log and continue without role blob.
                 log.error('Driver lookup failed: %s', ex)
 
         return jsonify({
@@ -274,6 +280,266 @@ def sponsor_bulk_drivers():
             "errors": errors,
             "sponsor_id": sponsor_id,
             "sponsor_name": sponsor_name,
+            "warnings": warnings,
+            "rows": results
+        }), 200
+
+    finally:
+        if cur is not None:
+            cur.close()
+        conn.close()
+
+@account_bp.post("/api/admin/bulk_accounts")
+@token_required
+def admin_bulk_accounts():
+    """
+    Admin-only bulk loader for Organizations (O), Sponsor users (S) and Driver users (D).
+    File format (pipe-delimited):
+      O|Organization Name
+      S|Organization Name|First|Last|email@example.com
+      D|Organization Name|First|Last|email@example.com
+
+    Rules:
+    - O creates/finds an organization anchor (implemented as a sponsor row with a special "anchor" sponsor user).
+    - S creates a sponsor user and a sponsor row using the given organization name.
+    - D creates/locates a driver user, ensures driver row, and links to the organization via driver_sponsor (balance starts 0.00).
+    - Organization must exist (preexisting or created by 'O') before adding S/D rows.
+    - Any invalid <type> => error for that line; processing continues.
+    """
+    import secrets
+    import io
+    import re
+
+    EMAIL_RE = re.compile(r"^[^@\s]+@[^@\s]+\.[^@\s]+$")
+    claims = getattr(g, "decoded_token", {}) or {}
+    user_id = claims.get("user_id") or claims.get("sub")
+    try:
+        user_id = int(user_id)
+    except Exception:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # Ensure caller is Admin (type_id == 1)
+        cur.execute("SELECT type_id FROM `user` WHERE user_id = %s", (user_id,))
+        u = cur.fetchone()
+        if not u or u["type_id"] != 1:
+            return jsonify({"error": "Only Admin users may use this endpoint"}), 403
+
+        if "file" not in request.files:
+            return jsonify({"error": "Missing file"}), 400
+
+        raw = request.files["file"].read()
+        try:
+            text = raw.decode("utf-8-sig", errors="replace")
+        except Exception:
+            text = raw.decode("utf-8", errors="replace")
+
+        processed = success = errors = 0
+        warnings = []
+        results = []
+
+        # Helper: find or create an "organization anchor"
+        # We use the sponsor table as the organization anchor.
+        # Because sponsor.user_id is NOT NULL, we create a special hidden sponsor user for 'O' rows if needed.
+        def get_or_create_org_anchor(org_name: str):
+            # prefer earliest (smallest id) to be canonical for this name
+            cur.execute("SELECT sponsor_id FROM sponsor WHERE name = %s ORDER BY sponsor_id ASC LIMIT 1", (org_name,))
+            s = cur.fetchone()
+            if s:
+                return s["sponsor_id"]
+
+            # Create hidden sponsor "anchor" user
+            # Make a deterministic-looking but unique email that won't collide with real users
+            anchor_email = f"org+{secrets.token_urlsafe(8)}@example.invalid"
+            cur.execute("""
+                INSERT INTO `user` (first_name, last_name, email, ssn, city, state, country, type_id)
+                VALUES (%s,%s,%s,NULL,NULL,NULL,NULL,2)
+            """, ("Org", "Anchor", anchor_email))
+            anchor_user_id = cur.lastrowid
+
+            temp_pw = secrets.token_urlsafe(16)
+            cur.execute("""
+                INSERT INTO user_credentials (user_id, username, password)
+                VALUES (%s, %s, %s)
+            """, (anchor_user_id, anchor_email, temp_pw))
+
+            cur.execute("""
+                INSERT INTO login_info (user_id, failed_attempts, is_locked, locked_until, security_question, security_answer)
+                VALUES (%s, 0, 0, NULL, %s, %s)
+            """, (anchor_user_id, "N/A", "N/A"))
+
+            cur.execute("""
+                INSERT INTO sponsor (user_id, name, description)
+                VALUES (%s, %s, %s)
+            """, (anchor_user_id, org_name, "Organization anchor (auto-created by admin import)"))
+            org_sponsor_id = cur.lastrowid
+            return org_sponsor_id
+
+        for idx, line in enumerate(io.StringIO(text), start=1):
+            processed += 1
+            original = line.rstrip("\r\n")
+            row = original.strip()
+            if not row:
+                results.append({"line": idx, "ok": True, "type": "", "message": "blank line (skipped)"})
+                continue
+
+            parts = row.split("|")
+            t = (parts[0] or "").strip() if len(parts) >= 1 else ""
+
+            try:
+                if t not in ("O", "S", "D"):
+                    errors += 1
+                    results.append({"line": idx, "ok": False, "type": t, "message": "Invalid record type (must be O, S, or D)."})
+                    continue
+
+                if t == "O":
+                    # Expect: O|Org Name
+                    if len(parts) < 2 or not parts[1].strip():
+                        errors += 1
+                        results.append({"line": idx, "ok": False, "type": "O", "message": "Missing organization name."})
+                        continue
+                    org_name = parts[1].strip()
+                    org_id = get_or_create_org_anchor(org_name)
+                    conn.commit()
+                    success += 1
+                    results.append({"line": idx, "ok": True, "type": "O", "message": f"Organization ensured: '{org_name}' (sponsor_id={org_id})."})
+                    continue
+
+                # From this point, require an org name
+                if len(parts) < 2 or not parts[1].strip():
+                    errors += 1
+                    results.append({"line": idx, "ok": False, "type": t, "message": "Missing organization name."})
+                    continue
+                org_name = parts[1].strip()
+
+                # Find or create anchor if a prior O didn't already
+                org_id = get_or_create_org_anchor(org_name)
+
+                if t == "S":
+                    # Expect: S|Org Name|First|Last|Email
+                    if len(parts) < 5:
+                        errors += 1
+                        results.append({"line": idx, "ok": False, "type": "S", "message": "Wrong column count; expected 5."})
+                        continue
+                    first, last, email = parts[2].strip(), parts[3].strip(), parts[4].strip()
+                    if not first or not last or not email or not EMAIL_RE.match(email):
+                        errors += 1
+                        results.append({"line": idx, "ok": False, "type": "S", "email": email, "message": "Missing/invalid first, last, or email."})
+                        continue
+
+                    # Create/locate sponsor user
+                    cur.execute("SELECT user_id, type_id FROM `user` WHERE email=%s", (email,))
+                    existing = cur.fetchone()
+                    if existing:
+                        sponsor_user_id = existing["user_id"]
+                        if existing["type_id"] != 2:
+                            warnings.append(f"line {idx}: existing user {email} has type_id={existing['type_id']} (not 2/Sponsor).")
+                    else:
+                        cur.execute("""
+                            INSERT INTO `user` (first_name, last_name, email, ssn, city, state, country, type_id)
+                            VALUES (%s,%s,%s,NULL,NULL,NULL,NULL,2)
+                        """, (first, last, email))
+                        sponsor_user_id = cur.lastrowid
+
+                        temp_pw = secrets.token_urlsafe(12)
+                        cur.execute("""
+                            INSERT INTO user_credentials (user_id, username, password)
+                            VALUES (%s, %s, %s)
+                        """, (sponsor_user_id, email, temp_pw))
+
+                        cur.execute("""
+                            INSERT INTO login_info (user_id, failed_attempts, is_locked, locked_until, security_question, security_answer)
+                            VALUES (%s, 0, 0, NULL, %s, %s)
+                        """, (sponsor_user_id, "Default question", "Default answer"))
+
+                    # Create sponsor row for THIS sponsor user (same name as org)
+                    cur.execute("""
+                        INSERT INTO sponsor (user_id, name, description)
+                        VALUES (%s, %s, %s)
+                    """, (sponsor_user_id, org_name, f"Sponsor user for org '{org_name}' (admin import)"))
+                    new_sponsor_id = cur.lastrowid
+
+                    conn.commit()
+                    success += 1
+                    results.append({"line": idx, "ok": True, "type": "S", "email": email,
+                                    "message": f"Sponsor user created/linked under org '{org_name}' (sponsor_id={new_sponsor_id})."})
+                    continue
+
+                if t == "D":
+                    # Expect: D|Org Name|First|Last|Email
+                    if len(parts) < 5:
+                        errors += 1
+                        results.append({"line": idx, "ok": False, "type": "D", "message": "Wrong column count; expected 5."})
+                        continue
+                    first, last, email = parts[2].strip(), parts[3].strip(), parts[4].strip()
+                    if not first or not last or not email or not EMAIL_RE.match(email):
+                        errors += 1
+                        results.append({"line": idx, "ok": False, "type": "D", "email": email, "message": "Missing/invalid first, last, or email."})
+                        continue
+
+                    # Create/locate driver user
+                    cur.execute("SELECT user_id, type_id FROM `user` WHERE email=%s", (email,))
+                    existing = cur.fetchone()
+                    if existing:
+                        driver_user_id = existing["user_id"]
+                        if existing["type_id"] != 3:
+                            warnings.append(f"line {idx}: existing user {email} has type_id={existing['type_id']} (not 3/Driver).")
+                    else:
+                        cur.execute("""
+                            INSERT INTO `user` (first_name, last_name, email, ssn, city, state, country, type_id)
+                            VALUES (%s,%s,%s,NULL,NULL,NULL,NULL,3)
+                        """, (first, last, email))
+                        driver_user_id = cur.lastrowid
+
+                        temp_pw = secrets.token_urlsafe(12)
+                        cur.execute("""
+                            INSERT INTO user_credentials (user_id, username, password)
+                            VALUES (%s, %s, %s)
+                        """, (driver_user_id, email, temp_pw))
+
+                        cur.execute("""
+                            INSERT INTO login_info (user_id, failed_attempts, is_locked, locked_until, security_question, security_answer)
+                            VALUES (%s, 0, 0, NULL, %s, %s)
+                        """, (driver_user_id, "Default question", "Default answer"))
+
+                    # Ensure driver row
+                    cur.execute("SELECT driver_id FROM driver WHERE user_id=%s", (driver_user_id,))
+                    drow = cur.fetchone()
+                    if drow:
+                        driver_id = drow["driver_id"]
+                    else:
+                        cur.execute("INSERT INTO driver (user_id) VALUES (%s)", (driver_user_id,))
+                        driver_id = cur.lastrowid
+
+                    # Link to org anchor via driver_sponsor (balance 0 if new)
+                    # Use canonical sponsor_id for the org name = earliest/anchor we ensured
+                    try:
+                        cur.execute("""
+                            INSERT INTO driver_sponsor (driver_id, sponsor_id, balance, status, since_at)
+                            VALUES (%s, %s, %s, 'ACTIVE', NOW())
+                        """, (driver_id, org_id, 0.00))
+                        link_msg = f"Linked to org '{org_name}' (sponsor_id={org_id})."
+                    except Exception:
+                        link_msg = f"Already linked to org '{org_name}' (sponsor_id={org_id})."
+
+                    conn.commit()
+                    success += 1
+                    results.append({"line": idx, "ok": True, "type": "D", "email": email, "message": f"Driver upserted. {link_msg}"})
+                    continue
+
+            except Exception as ex:
+                conn.rollback()
+                errors += 1
+                results.append({"line": idx, "ok": False, "type": t, "message": f"DB error: {str(ex)}"})
+
+        return jsonify({
+            "processed": processed,
+            "success": success,
+            "errors": errors,
             "warnings": warnings,
             "rows": results
         }), 200
