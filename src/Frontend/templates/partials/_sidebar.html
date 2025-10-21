@@ -1,9 +1,36 @@
 <aside class="app-body-navigation">
   <nav class="navigation">
-    <a href="/home" id="homeBtn"><i class="ph-house"></i> Home</a>
+    <a href="#" id="homeBtn"><i class="ph-house"></i> Home</a>
     <a href="/market" id="catalogBtn"><i class="ph-shopping-cart"></i> Catalog</a>
     <a href="/about" id="aboutBtn"><i class="ph-info"></i> About</a>
     <a href="/account" id="accountBtn"><i class="ph-user"></i> Account</a>
     <a href="/login" id="logoutBtnSidebar"><i class="ph-sign-out"></i> Logout</a>
   </nav>
 </aside>
+
+<script>
+document.addEventListener('DOMContentLoaded', async () => {
+    const homeBtn = document.getElementById('homeBtn');
+    if (!homeBtn) return;
+
+    try {
+        // Fetch user info
+        const res = await fetch('/api/account', { method: 'GET', credentials: 'same-origin' });
+        if (!res.ok) throw new Error('Failed to get account info');
+        const data = await res.json();
+        const role = data.role_name; // role_name from backend
+
+        // Redirect Home button dynamically
+        let homeUrl = '/home'; // default
+        if (role === 'Admin') homeUrl = '/admin/home';
+        else if (role === 'Sponsor') homeUrl = '/sponsor/home';
+        else if (role === 'Driver') homeUrl = '/driver/home';
+
+        homeBtn.setAttribute('href', homeUrl);
+
+    } catch (err) {
+        console.error('Could not set home button:', err);
+        homeBtn.setAttribute('href', '/home'); // fallback
+    }
+});
+</script>

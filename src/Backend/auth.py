@@ -1,11 +1,17 @@
 import os
-import jwt
 import datetime
 import logging
 import traceback
-from flask import Blueprint, request, jsonify, g
+from flask import Blueprint, request, jsonify, g, redirect, current_app
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
+from flask_jwt_extended import (
+    create_access_token,
+    set_access_cookies,
+    unset_jwt_cookies,
+    verify_jwt_in_request,
+    get_jwt,
+)
 from utils.db import get_db_connection
 from audit_logging.login_audit_logs import log_login_attempt, log_password_change
 
@@ -207,16 +213,48 @@ def login():
             log_login_attempt(user_id, username, False, failure_reason='BAD_PASSWORD')
             return jsonify({'error': 'Invalid username or password'}), 401
 
-        secret = os.getenv('JWT_SECRET', 'dev_secret')
-        token = jwt.encode({
-            'user_id': user_id,
-            'username': username,
-            'exp': datetime.datetime.now(datetime.timezone.utc) + datetime.timedelta(hours=24)
-        }, secret, algorithm='HS256')
+        cur.execute("SELECT type_id FROM `user` WHERE user_id = %s", (user_id,))
+        urow = cur.fetchone() or {}
+        type_id = urow.get('type_id') if isinstance(urow, dict) else (urow[0] if urow else None)
+        role_map = {1: 'admin', 2: 'sponsor', 3: 'driver'}
+        role = role_map.get(type_id, 'user')
 
-        logger.info(f"Login success: user_id={user_id}")
+        logger.info(f"Login success: user_id={user_id} role={role}")
         log_login_attempt(user_id, username, True)
-        return jsonify({'token': token}), 200
+
+        # Create access token and include user info in claims
+        remember = bool(data.get('remember'))
+        # If the user asked to be remembered, extend token lifetime (30 days).
+        if remember:
+            expires = datetime.timedelta(days=30)
+            logger.info(f"Issuing remembered token for user_id={user_id} (expires in 30 days)")
+            access_token = create_access_token(
+                identity=str(user_id),
+                additional_claims={'role': role, 'user_id': user_id, 'username': username},
+                expires_delta=expires
+            )
+        else:
+            access_token = create_access_token(
+                identity=str(user_id),
+                additional_claims={'role': role, 'user_id': user_id, 'username': username}
+            )
+        resp = jsonify({'role': role})
+        # Set cookie manually so we can control whether it's a session cookie
+        cookie_name = current_app.config.get('JWT_ACCESS_COOKIE_NAME', 'access_token_cookie')
+        samesite = current_app.config.get('JWT_COOKIE_SAMESITE', 'Lax')
+        secure = current_app.config.get('JWT_COOKIE_SECURE', False)
+
+        if remember:
+            max_age = 30 * 24 * 3600
+            resp.set_cookie(cookie_name, access_token,
+                            httponly=True, secure=secure, samesite=samesite,
+                            max_age=max_age, path='/')
+        else:
+            # No max_age -> session cookie (removed when browser is closed)
+            resp.set_cookie(cookie_name, access_token,
+                            httponly=True, secure=secure, samesite=samesite,
+                            path='/')
+        return resp, 200
 
     except Exception as e:
         logger.error(f"Error in /api/login: {e}\n{traceback.format_exc()}")
@@ -266,23 +304,74 @@ def password_reset():
     return jsonify({'success': True, 'message': 'Password reset successfully'}), 200
 
 
+@auth_bp.post('/logout')
+def logout():
+    try:
+        resp = jsonify({'msg': 'Logout successful'})
+        cookie_name = current_app.config.get('JWT_ACCESS_COOKIE_NAME', 'access_token_cookie')
+        resp.delete_cookie(cookie_name, path='/')
+        try:
+            unset_jwt_cookies(resp)
+        except Exception:
+            pass
+        return resp, 200
+    except Exception as e:
+        logger.error(f"Error during logout: {e}")
+        return jsonify({'error': 'Logout failed'}), 500
 
 # To protect api endpoints
 def token_required(f):
+    """Compatibility wrapper that verifies JWT in request (header or cookie) and
+    stores claims in `g.decoded_token` for downstream code expecting that variable.
+    """
     @wraps(f)
     def wrapper(*args, **kwargs):
-        token = None
-        if 'Authorization' in request.headers:
-            auth_header = request.headers['Authorization']
-            if auth_header.startswith('Bearer '):
-                token = auth_header.split(' ')[1]
-        if not token:
-            return jsonify({'error': 'Token is missing!'}), 401
+        cookie_name = current_app.config.get('JWT_ACCESS_COOKIE_NAME', 'access_token_cookie')
+        has_cookie = cookie_name in request.cookies
+        logger.info(f"token_required: incoming cookies keys={list(request.cookies.keys())}")
+        logger.info(f"token_required: expecting cookie '{cookie_name}' present={has_cookie}")
         try:
-            secret = os.getenv('JWT_SECRET', 'dev_secret')
-            # decode and stash for downstream handlers
-            g.decoded_token = jwt.decode(token, secret, algorithms=['HS256'])
-        except Exception:
-            return jsonify({'error': 'Token is invalid!'}), 401
+            verify_jwt_in_request()
+            claims = get_jwt() or {}
+            g.decoded_token = claims
+        except Exception as exc:
+            logger.info(f"token_required: JWT verification failed (cookie_present={has_cookie}) -> {type(exc).__name__}: {str(exc)}")
+            accept = request.headers.get('Accept', '')
+            if 'text/html' in accept:
+                return redirect('/login')
+            return jsonify({'error': 'Token missing or invalid'}), 401
         return f(*args, **kwargs)
     return wrapper
+
+
+def require_role(required):
+    """Decorator to require a specific role or list of roles using flask_jwt_extended claims.
+
+    Usage:
+      @require_role('admin')
+      @require_role(['admin','sponsor'])
+    """
+    def decorator(f):
+        @wraps(f)
+        def wrapped(*args, **kwargs):
+            try:
+                verify_jwt_in_request()
+                claims = get_jwt() or {}
+                role = claims.get('role')
+                allowed = required if isinstance(required, (list, tuple, set)) else [required]
+                if role not in allowed:
+                    accept = request.headers.get('Accept', '')
+                    if 'text/html' in accept:
+                        return redirect('/login')
+                    return jsonify({'error': 'Forbidden'}), 403
+                # keep backward compatibility
+                g.decoded_token = claims
+                return f(*args, **kwargs)
+            except Exception as exc:
+                logger.info(f"require_role: JWT verification/role check failed -> {type(exc).__name__}: {str(exc)}")
+                accept = request.headers.get('Accept', '')
+                if 'text/html' in accept:
+                    return redirect('/login')
+                return jsonify({'error': 'Token missing or invalid'}), 401
+        return wrapped
+    return decorator
