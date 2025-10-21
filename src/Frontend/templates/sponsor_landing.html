@@ -5,8 +5,6 @@
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
   <title>Sponsor Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
-  <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
-  <script>Auth.requireAuth('/login');</script>
 </head>
 <body>
   <div class="responsive-wrapper">
@@ -67,32 +65,7 @@
             </div>
 
             <div class="transfers" id="driverList">
-              {% for driver in drivers %}
-              <div class="transfer">
-                <div class="transfer-logo">
-                  <img src="{{ driver.profile_picture or url_for('static', filename='img/default_driver.png') }}" alt="Driver Picture">
-                </div>
-                <div class="transfer-details">
-                  <div>
-                    <dt>Name</dt>
-                    <dd>{{ driver.name }}</dd>
-                  </div>
-                  <div>
-                    <dt>Points Earned</dt>
-                    <dd>{{ driver.points }}</dd>
-                  </div>
-                  <div>
-                    <dt>Status</dt>
-                    <dd>{{ 'Active' if driver.active else 'Inactive' }}</dd>
-                  </div>
-                </div>
-                <div class="transfer-number">
-                  <a href="/driver/{{ driver.id }}" class="flat-button">View Profile</a>
-                </div>
-              </div>
-              {% else %}
-              <p>No drivers currently sponsored.</p>
-              {% endfor %}
+              <!-- Drivers will be populated by sponsor_landing.js -->
             </div>
           </div>
         </section>
@@ -101,5 +74,6 @@
   </div>
 
   <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/sponsor_landing.js') }}"></script>
 </body>
 </html>

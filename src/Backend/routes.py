@@ -4,7 +4,7 @@ from utils.db import get_about_data
 import os
 import requests
 import base64
-from auth import token_required
+from auth import token_required, require_role
 from services import get_fake_store_data 
 
 routes_bp = Blueprint('routes', __name__)
@@ -56,12 +56,22 @@ def account_page():
     return render_template('account.html')
 
 @routes_bp.route('/sponsor/home')
+@token_required
+@require_role("sponsor")
 def sponsor_home():
     return render_template('sponsor_landing.html')
 
 @routes_bp.route('/admin/home')
+@token_required
+@require_role("admin")
 def admin_home():
     return render_template('admin_landing.html')
+
+@routes_bp.route('/driver/home')
+@token_required
+@require_role("driver")
+def driver_home():
+    return render_template('landing_page.html')
 
 @routes_bp.route('/cart')
 def cart_page():

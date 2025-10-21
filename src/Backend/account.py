@@ -2,11 +2,12 @@
 from flask import Blueprint, jsonify, g, request
 import logging
 from utils.db import get_db_connection
-from auth import token_required
+from auth import token_required, require_role
 import io
 import re
 import secrets
 import datetime
+
 
 account_bp = Blueprint("account", __name__)
 
@@ -132,11 +133,10 @@ def account_api():
 # Admin Accounts API
 @account_bp.route("/api/admin/accounts", methods=["GET"])
 @token_required
+@require_role("admin")
 def admin_accounts_api():
-    """
-    TEMPORARY: Returns all user accounts and their role data (no auth for testing).
-    Mirrors the structure of /api/account but for all users.
-    """
+    
+    
     conn = get_db_connection()
     cur = None
     try:
@@ -514,6 +514,59 @@ def purchase_api():
         if conn:
             conn.close()
         conn.close()
+
+# Sponsor Accounts API
+@account_bp.route("/api/sponsor/accounts", methods=["GET"])
+@token_required
+@require_role("sponsor")
+def sponsor_accounts_api():
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        user_id = int(user_id)
+    except Exception:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # --- Get sponsor info ---
+        cur.execute("SELECT sponsor_id, name FROM sponsor WHERE user_id = %s", (user_id,))
+        sponsor = cur.fetchone()
+        if not sponsor:
+            return jsonify({"error": "Sponsor not found"}), 404
+
+        sponsor_id = sponsor["sponsor_id"]
+
+        # --- Get drivers associated with this sponsor ---
+        cur.execute("""
+            SELECT d.driver_id, d.name, d.points, d.active,
+            FROM driver d
+            JOIN driver_sponsor ds ON ds.driver_id = d.driver_id
+            WHERE ds.sponsor_id = %s
+            ORDER BY d.name
+        """, (sponsor_id,))
+        drivers = cur.fetchall() or []
+
+        # Count active drivers
+        active_drivers = sum(1 for d in drivers if d.get("active"))
+
+        return jsonify({
+            "sponsor_id": sponsor_id,
+            "sponsor_name": sponsor["name"],
+            "active_drivers": active_drivers,
+            "drivers": drivers
+        })
+
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
 
 @account_bp.post("/api/admin/bulk_accounts")
 @token_required
