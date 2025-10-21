@@ -55,17 +55,17 @@ def about_api():
 def account_page():
     return render_template('account.html')
 
-<<<<<<< HEAD
 @routes_bp.route('/sponsor/home')
 def sponsor_home():
     return render_template('sponsor_landing.html')
 
+@routes_bp.route('/admin/home')
+def admin_home():
+    return render_template('admin_landing.html')
 
-=======
 @routes_bp.route('/cart')
 def cart_page():
     return render_template('cart.html')
->>>>>>> 098141cd12c04f71b5b62fc0f8bbbea2eff137fa
 
 # @routes_bp.route('/api/register', methods=['POST'])
 # def register_api():
