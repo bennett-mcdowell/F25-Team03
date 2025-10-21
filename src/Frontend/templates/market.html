@@ -3,11 +3,10 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-        <title>Product Catalog</title>
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
-        <link rel="stylesheet" href="{{ url_for('static', filename='css/market.css') }}">
-        <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
-        <script>Auth.requireAuth('/login');</script>
+    <title>Product Catalog</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/market.css') }}">
+    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
 </head>
 <body>
     <div class="responsive-wrapper">
@@ -19,7 +18,6 @@
                         <span>Catalog</span>
                     </div>
                 </div>
-                <!-- Cart button in header -->
                 <div style="margin-left: auto;">
                     <a href="/cart" class="view-cart-link">
                         🛒 View Cart
@@ -34,7 +32,18 @@
                 <!-- Main Content -->
                 <section class="service-section">
                     <h2>Browse Products</h2>
-                    <p class="subtitle">{% if api_data and api_data.products %}{{ api_data.products|length }} items available{% endif %}</p>
+
+                    <!-- Category Filters -->
+                    <div class="category-filters" id="categoryFilters">
+                        <button class="category-btn active" data-category="all">
+                            All Products
+                        </button>
+                        <!-- Categories loaded dynamically from API data -->
+                    </div>
+
+                    <p class="subtitle" id="productCount">
+                        {% if api_data and api_data.products %}{{ api_data.products|length }} items available{% endif %}
+                    </p>
 
                     {% if api_data %}
                         {% if api_data.error %}
@@ -42,12 +51,17 @@
                         {% elif api_data.products and api_data.products|length > 0 %}
                             <div class="tiles" id="productCatalog">
                                 {% for product in api_data.products %}
-                                    <div class="tile">
+                                    <div class="tile product-item" 
+                                         data-product-id="{{ product.id }}"
+                                         data-category="{{ product.category }}">
                                         <div class="tile-header">
                                             <h3>{{ product.title }}</h3>
                                         </div>
                                         <div class="card-content">
-                                            <div class="image-container"><img src="{{ product.image }}" alt="{{ product.title }}"></div>
+                                            <div class="image-container">
+                                                <img src="{{ product.image }}" alt="{{ product.title }}">
+                                                <span class="category-badge">{{ product.category }}</span>
+                                            </div>
                                             <p class="description">{{ product.description[:120] }}...</p>
                                             <p class="price">{{ (product.price * 100)|int }} points</p>
                                             <button class="add-to-cart-btn" 
