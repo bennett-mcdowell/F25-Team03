@@ -10,48 +10,39 @@ body {
     min-height: 100vh;
 }
 
-/* ------------------- */
-/* NAVIGATION BAR      */
-/* ------------------- */
-
 .navbar {
-  background-color: var(--surface-color);
-  border-bottom: 1px solid var(--border-color);
-  display: flex;
-  justify-content: space-between;
-  align-items: center;
-  padding: 0.75rem 2rem;
-  position: sticky;
-  top: 0;
-  z-index: 100;
+    background: linear-gradient(135deg, #1e1e1e 0%, #2a2a2a 100%);
+    color: white;
+    padding: 1rem 2rem;
+    display: flex;
+    justify-content: space-between;
+    align-items: center;
+    box-shadow: 0 2px 8px rgba(0,0,0,0.5);
+    border-bottom: 1px solid #333;
 }
 
-.navbar h1 {
-  font-size: 1.4rem;
-  color: var(--accent-color);
-  margin: 0;
-  letter-spacing: 0.5px;
+.logo {
+    font-size: 1.5rem;
+    font-weight: 600;
 }
 
 .nav-links {
-  list-style: none;
-  display: flex;
-  gap: 1.5rem;
-  margin: 0;
-  padding: 0;
+    list-style: none;
+    display: flex;
+    gap: 2rem;
+    margin: 0;
+    padding: 0;
 }
 
 .nav-links a {
-  color: var(--text-color);
-  text-decoration: none;
-  font-weight: 500;
-  transition: color 0.2s, border-bottom 0.2s;
-  border-bottom: 2px solid transparent;
+    color: white;
+    text-decoration: none;
+    font-weight: 500;
+    transition: color 0.3s;
 }
 
 .nav-links a:hover {
-  color: var(--accent-color);
-  border-bottom: 2px solid var(--accent-color);
+    color: #667eea;
 }
 
 .container {
@@ -122,20 +113,6 @@ body {
 .product-card:hover .image-container img {
     transform: scale(1.05);
     filter: brightness(1);
-}
-
-.category-badge {
-    position: absolute;
-    top: 12px;
-    right: 12px;
-    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
-    color: white;
-    padding: 6px 12px;
-    border-radius: 20px;
-    font-size: 0.7rem;
-    font-weight: 600;
-    text-transform: capitalize;
-    box-shadow: 0 2px 8px rgba(102, 126, 234, 0.4);
 }
 
 .card-content {
@@ -251,7 +228,7 @@ body {
 #productCatalog {
     display: grid;
     grid-template-columns: repeat(auto-fill, minmax(220px, 1fr));
-    grid-auto-rows: 1fr; /* make each row a uniform height */
+    grid-auto-rows: 1fr;
     gap: 1rem;
     align-items: stretch;
     justify-items: stretch;
@@ -280,6 +257,7 @@ body {
 #productCatalog .tile .card-content { padding: 0.9rem 1rem; display:flex; flex-direction:column; gap:8px; }
 
 #productCatalog .tile .image-container {
+    position: relative;
     height: 150px;
     padding: 10px;
 }
@@ -318,7 +296,6 @@ body {
 
 #productCatalog .tile .card-content h3 { font-weight: 700; }
 
-/* NEW: Add to Cart button styling */
 .add-to-cart-btn {
     background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
     color: white;
@@ -338,19 +315,70 @@ body {
     box-shadow: 0 4px 12px rgba(102, 126, 234, 0.4);
 }
 
-/* NEW: View Cart link in header */
 .view-cart-link {
     color: var(--c-text-primary);
     text-decoration: none;
     font-weight: 600;
     padding: 0.5rem 1rem;
-    background: var(--c-gray-700);
+    background: var(--c-gray-600);
     border-radius: 6px;
     transition: all 0.3s ease;
     display: inline-block;
 }
 
 .view-cart-link:hover {
-    background: var(--c-gray-600);
+    background: var(--c-gray-500);
     transform: translateY(-2px);
+}
+
+/* Category Filters */
+.category-filters {
+    display: flex;
+    gap: 0.75rem;
+    flex-wrap: wrap;
+    padding: 1rem;
+    background: var(--c-gray-700);
+    border-radius: 8px;
+    margin-bottom: 2rem;
+}
+
+.category-btn {
+    background: var(--c-gray-600);
+    color: var(--c-text-primary);
+    border: 2px solid transparent;
+    padding: 0.6rem 1.2rem;
+    border-radius: 6px;
+    font-weight: 600;
+    cursor: pointer;
+    transition: all 0.2s ease;
+    text-transform: capitalize;
+}
+
+.category-btn:hover {
+    background: var(--c-gray-500);
+    transform: translateY(-2px);
+}
+
+.category-btn.active {
+    background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+    color: var(--c-white);
+    border-color: #667eea;
+}
+
+.product-item.hidden {
+    display: none !important;
+}
+
+.category-badge {
+    position: absolute;
+    top: 8px;
+    right: 8px;
+    font-size: 0.7rem;
+    background: #667eea;
+    color: var(--c-white);
+    padding: 0.25rem 0.5rem;
+    border-radius: 4px;
+    text-transform: capitalize;
+    box-shadow: 0 2px 4px rgba(0,0,0,0.3);
+    z-index: 10;
 }
