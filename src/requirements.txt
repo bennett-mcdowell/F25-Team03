@@ -6,3 +6,4 @@ dotenv
 PyJWT
 werkzeug
 requests
+flask-jwt-extended

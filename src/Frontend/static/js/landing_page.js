@@ -1,7 +1,26 @@
 document.addEventListener("DOMContentLoaded", () => {
-    // Example points
-    let userPoints = 1200;
-    document.getElementById("pointsDisplay").textContent = userPoints;
+    // Fetch user account data to get driver balance
+    fetch('/api/account')
+        .then(response => response.json())
+        .then(data => {
+            if (data.error) {
+                console.error("Error fetching account:", data.error);
+                document.getElementById("pointsDisplay").textContent = "0";
+                return;
+            }
+
+            if (data.role_name === "Driver" && data.role) {
+                const balance = data.role.balance ?? 0;
+                document.getElementById("pointsDisplay").textContent = balance;
+            } else {
+                // Fallback if not driver or missing role info
+                document.getElementById("pointsDisplay").textContent = "0";
+            }
+        })
+        .catch(err => {
+            console.error("Failed to load driver balance:", err);
+            document.getElementById("pointsDisplay").textContent = "0";
+        });
 
     // Product catalog data
     const products = [
