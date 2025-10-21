@@ -1,3 +1,4 @@
+from lib2to3.pgen2.driver import Driver
 from flask import Blueprint, render_template, jsonify, redirect
 from utils.db import get_about_data
 import os
@@ -53,6 +54,14 @@ def about_api():
 @token_required
 def account_page():
     return render_template('account.html')
+
+@routes_bp.route('/sponsor/home')
+def sponsor_home():
+    return render_template('sponsor_landing.html')
+
+@routes_bp.route('/admin/home')
+def admin_home():
+    return render_template('admin_landing.html')
 
 @routes_bp.route('/cart')
 def cart_page():

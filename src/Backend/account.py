@@ -129,6 +129,113 @@ def account_api():
             cur.close()
         conn.close()
 
+# Admin Accounts API
+@account_bp.route("/api/admin/accounts", methods=["GET"])
+@token_required
+def admin_accounts_api():
+    """
+    TEMPORARY: Returns all user accounts and their role data (no auth for testing).
+    Mirrors the structure of /api/account but for all users.
+    """
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # --- 1) Get all users ---
+        cur.execute("SELECT * FROM `user`")
+        users = cur.fetchall() or []
+
+        results = []
+
+        for u in users:
+            user_id = u["user_id"]
+            type_id = u.get("type_id")
+
+            # Remove sensitive/tech fields if your constants exist
+            user_data = {
+                k: v for k, v in u.items()
+                if k.lower() not in ["password", "created_at", "updated_at"]
+            }
+
+            # --- 2) Get user type info ---
+            cur.execute("SELECT * FROM user_type WHERE type_id = %s", (type_id,))
+            trow = cur.fetchone()
+            type_info = dict(trow) if trow else None
+            role_name = type_info.get("type_name") if type_info else None
+
+            # --- 3) Role-specific details ---
+            role_blob = None
+
+            # Admin
+            if type_id == 1:
+                cur.execute("""
+                    SELECT admin_id, user_id, admin_permissions
+                    FROM admin
+                    WHERE user_id = %s
+                """, (user_id,))
+                r = cur.fetchone()
+                if r:
+                    role_blob = dict(r)
+
+            # Sponsor
+            elif type_id == 2:
+                cur.execute("""
+                    SELECT sponsor_id, user_id, name, description
+                    FROM sponsor
+                    WHERE user_id = %s
+                """, (user_id,))
+                r = cur.fetchone()
+                if r:
+                    role_blob = dict(r)
+
+            # Driver
+            elif type_id == 3:
+                # 1) Find this user's driver_id
+                cur.execute("SELECT driver_id FROM driver WHERE user_id = %s", (user_id,))
+                drow = cur.fetchone()
+                if drow:
+                    driver_id = drow["driver_id"]
+                    role_blob = {"driver_id": driver_id}
+
+                    # 2) Get sponsors for this driver
+                    cur.execute("""
+                        SELECT
+                            ds.driver_sponsor_id,
+                            ds.balance,
+                            ds.status,
+                            ds.since_at,
+                            ds.until_at,
+                            s.sponsor_id,
+                            s.name,
+                            s.description
+                        FROM driver_sponsor ds
+                        JOIN sponsor s ON s.sponsor_id = ds.sponsor_id
+                        WHERE ds.driver_id = %s
+                        ORDER BY s.name
+                    """, (driver_id,))
+                    sponsors = cur.fetchall() or []
+                    role_blob["sponsors"] = sponsors
+                    role_blob["total_balance"] = float(sum((row.get("balance") or 0) for row in sponsors))
+
+            results.append({
+                "user": user_data,
+                "type": type_info,
+                "role_name": role_name,
+                "role": role_blob
+            })
+
+        return jsonify({"accounts": results}), 200
+
+    except Exception as e:
+        print("Error in /api/admin/accounts:", e)
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
 @account_bp.post("/api/sponsor/bulk_drivers")
 @token_required
 def sponsor_bulk_drivers():
