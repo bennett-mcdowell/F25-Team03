@@ -27,7 +27,7 @@ jobs:
             git pull origin main
             cd src
             pip3 install -r requirements.txt
-            cd backend
+            cd Backend
             pm2 delete flask-app || true
             PORT=$PORT pm2 start app.py --name flask-app --interpreter python3
             pm2 save
