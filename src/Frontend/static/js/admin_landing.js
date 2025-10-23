@@ -34,15 +34,19 @@ document.addEventListener("DOMContentLoaded", () => {
         const roleName = account.role_name || "-";
         const role = account.role || {};
 
-        // Determine sponsor name if applicable
-        const sponsorName = role.name || "-";
+        let sponsorCell = "-";
+        if (roleName === "Driver" && Array.isArray(role.sponsors) && role.sponsors.length > 0) {
+          sponsorCell = role.sponsors.map(s => s.name).join(", ");
+        } else if (role.name) {
+          sponsorCell = role.name;
+        }
 
         const row = document.createElement("tr");
         row.innerHTML = `
           <td>${user.user_id || "-"}</td>
           <td>${user.username || user.email || "-"}</td>
           <td>${roleName}</td>
-          <td>${sponsorName}</td>
+          <td>${sponsorCell}</td>
           <td><a href="/account/${user.user_id}" class="flat-button">View</a></td>
         `;
         body.appendChild(row);
