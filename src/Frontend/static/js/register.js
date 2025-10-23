@@ -63,6 +63,12 @@ document.addEventListener('DOMContentLoaded', function () {
                 if (successDiv) successDiv.style.display = 'none';
                 return;
             }
+            if (!passwordMeetsCriteria(password)) {
+                errorDiv.textContent = 'Password does not meet the required criteria.';
+                errorDiv.style.display = 'block';
+                if (successDiv) successDiv.style.display = 'none';
+                return;
+            }
             
             try {
                 const response = await fetch('/api/register', {
@@ -104,3 +110,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+function passwordMeetsCriteria(password) {
+    const minLength = 8;
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*]/.test(password);
+
+    return password.length >= minLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
+}

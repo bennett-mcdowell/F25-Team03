@@ -543,12 +543,22 @@ def sponsor_accounts_api():
         sponsor_id = sponsor["sponsor_id"]
 
         # --- Get drivers associated with this sponsor ---
-        cur.execute("""
-            SELECT d.driver_id, d.name, d.points, d.active,
-            FROM driver d
-            JOIN driver_sponsor ds ON ds.driver_id = d.driver_id
+        cur.execute("""   
+            SELECT
+            d.driver_id,
+            u.user_id,
+            u.first_name,
+            u.last_name,
+            u.email,
+            ds.balance,
+            ds.status,
+            ds.since_at,
+            ds.until_at
+            FROM driver_sponsor ds
+            JOIN driver d ON ds.driver_id = d.driver_id
+            JOIN `user` u ON d.user_id = u.user_id
             WHERE ds.sponsor_id = %s
-            ORDER BY d.name
+            ORDER BY u.last_name, u.first_name
         """, (sponsor_id,))
         drivers = cur.fetchall() or []
 

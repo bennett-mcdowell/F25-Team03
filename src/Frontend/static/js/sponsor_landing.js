@@ -24,15 +24,19 @@ document.addEventListener('DOMContentLoaded', () => {
       drivers.forEach(driver => {
         const driverDiv = document.createElement("div");
         driverDiv.classList.add("transfer");
+
+        const fullName = (driver.first_name || "") + (driver.last_name ? (" " + driver.last_name) : "");
+        const driverName = fullName.trim() || driver.email || "-";
+        const balance = parseFloat(driver.balance) || 0;
         driverDiv.innerHTML = `
           <div class="transfer-details">
             <div>
               <dt>Name</dt>
-              <dd>${driver.name}</dd>
+              <dd>${driverName}</dd>
             </div>
             <div>
               <dt>Points Earned</dt>
-              <dd id="driverPoints-${driver.driver_id}">${driver.points || 0}</dd>
+              <dd id="driverPoints-${driver.driver_id}">${balance}</dd>
             </div>
             <div>
               <dt>Status</dt>

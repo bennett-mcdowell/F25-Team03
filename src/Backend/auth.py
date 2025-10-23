@@ -2,6 +2,7 @@ import os
 import datetime
 import logging
 import traceback
+import datetime
 from flask import Blueprint, request, jsonify, g, redirect, current_app
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -145,11 +146,19 @@ def register():
               (user_id, sec_q, sec_a),
               label="insert login_info")
 
-        # 4) driver (link to sponsor we validated)
+
+        # 4) driver
         _exec(cur,
-              "INSERT INTO driver (user_id, balance, sponsor_id) VALUES (%s, %s, %s)",
-              (user_id, 0.00, sponsor_id_val),
+              "INSERT INTO driver (user_id) VALUES (%s)",
+              (user_id,),
               label="insert driver")
+        
+        driver_id = cur.lastrowid
+        # 5) driver_sponsor relationship
+        _exec(cur,
+                "INSERT INTO driver_sponsor (driver_id, sponsor_id, balance, status, since_at) VALUES (%s, %s, %s, 'ACTIVE', NOW())",
+                (driver_id, sponsor_id_val, 0.00),
+                label="insert driver_sponsor")
 
         conn.commit()
         logger.info("Transaction committed (register)")

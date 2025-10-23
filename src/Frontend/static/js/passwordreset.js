@@ -12,6 +12,10 @@ document.addEventListener('DOMContentLoaded', function () {
                 errorDiv.textContent = 'Passwords do not match.';
                 errorDiv.style.display = 'block';
                 return;
+            } else if (!passwordMeetsCriteria(newpassword)) {
+                errorDiv.textContent = 'Password does not meet criteria.';
+                errorDiv.style.display = 'block';
+                return;
             } else {
                 errorDiv.style.display = 'none';
             }               
@@ -39,3 +43,13 @@ document.addEventListener('DOMContentLoaded', function () {
         });
     }
 });
+
+function passwordMeetsCriteria(password) {
+    const minLength = 8;
+    const hasUppercase = /[A-Z]/.test(password);
+    const hasLowercase = /[a-z]/.test(password);
+    const hasNumber = /[0-9]/.test(password);
+    const hasSpecialChar = /[!@#$%^&*]/.test(password);
+
+    return password.length >= minLength && hasUppercase && hasLowercase && hasNumber && hasSpecialChar;
+}
