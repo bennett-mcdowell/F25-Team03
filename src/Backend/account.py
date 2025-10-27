@@ -917,3 +917,61 @@ def admin_bulk_accounts():
         if cur is not None:
             cur.close()
         conn.close()
+
+@account_bp.route("/api/driver/sponsors", methods=["GET"])
+@token_required
+@require_role("driver")
+def driver_sponsors_api():
+    """Return a list of sponsors and point balances for the logged-in driver."""
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        user_id = int(user_id)
+    except Exception:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # Find this user's driver_id
+        cur.execute("SELECT driver_id FROM driver WHERE user_id = %s", (user_id,))
+        drow = cur.fetchone()
+        if not drow:
+            return jsonify({"error": "Driver not found"}), 404
+        driver_id = drow["driver_id"]
+
+        # Get all sponsors and balances
+        cur.execute("""
+            SELECT
+                s.sponsor_id,
+                s.name AS sponsor_name,
+                s.description,
+                ds.balance
+            FROM driver_sponsor ds
+            JOIN sponsor s ON s.sponsor_id = ds.sponsor_id
+            WHERE ds.driver_id = %s
+            ORDER BY s.name
+        """, (driver_id,))
+        sponsors = cur.fetchall() or []
+
+        total_points = float(sum((row.get("balance") or 0) for row in sponsors))
+
+        return jsonify({
+            "driver_id": driver_id,
+            "total_points": total_points,
+            "sponsors": sponsors
+        }), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cur:
+            cur.close()
+        conn.close()

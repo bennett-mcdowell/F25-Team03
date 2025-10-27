@@ -71,7 +71,7 @@ def admin_home():
 @token_required
 @require_role("driver")
 def driver_home():
-    return render_template('landing_page.html')
+    return render_template('driver_landing.html')
 
 @routes_bp.route('/cart')
 def cart_page():
