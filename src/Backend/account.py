@@ -578,6 +578,86 @@ def sponsor_accounts_api():
         conn.close()
 
 
+@account_bp.route("/api/sponsor/driver/<int:driver_id>/add_points", methods=["POST"])
+@token_required
+@require_role("sponsor")
+def sponsor_add_points(driver_id):
+    """
+    Allow a sponsor to add points to a driver's balance.
+    Expects JSON body: { "points": <number> }
+    Returns the updated balance.
+    """
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        user_id = int(user_id)
+    except Exception:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    points = data.get("points")
+
+    # Validate points
+    if not points or not isinstance(points, (int, float)) or points <= 0:
+        return jsonify({"error": "Invalid points value"}), 400
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # Get sponsor_id for this user
+        cur.execute("SELECT sponsor_id FROM sponsor WHERE user_id = %s", (user_id,))
+        sponsor = cur.fetchone()
+        if not sponsor:
+            return jsonify({"error": "Sponsor not found"}), 404
+
+        sponsor_id = sponsor["sponsor_id"]
+
+        # Verify that this sponsor is associated with the driver
+        cur.execute("""
+            SELECT driver_sponsor_id, balance
+            FROM driver_sponsor
+            WHERE driver_id = %s AND sponsor_id = %s
+        """, (driver_id, sponsor_id))
+        ds_row = cur.fetchone()
+
+        if not ds_row:
+            return jsonify({"error": "Driver not found or not associated with this sponsor"}), 404
+
+        driver_sponsor_id = ds_row["driver_sponsor_id"]
+        current_balance = float(ds_row["balance"] or 0)
+
+        # Add points to balance
+        new_balance = current_balance + float(points)
+
+        cur.execute("""
+            UPDATE driver_sponsor
+            SET balance = %s
+            WHERE driver_sponsor_id = %s
+        """, (new_balance, driver_sponsor_id))
+        conn.commit()
+
+        return jsonify({
+            "message": "Points added successfully",
+            "new_points": new_balance,
+            "added": float(points)
+        }), 200
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.error(f"Error adding points: {e}")
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
+
 @account_bp.post("/api/admin/bulk_accounts")
 @token_required
 def admin_bulk_accounts():
