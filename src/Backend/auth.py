@@ -346,7 +346,9 @@ def token_required(f):
         except Exception as exc:
             logger.info(f"token_required: JWT verification failed (cookie_present={has_cookie}) -> {type(exc).__name__}: {str(exc)}")
             accept = request.headers.get('Accept', '')
-            if 'text/html' in accept:
+            is_json_request = request.path.startswith('/api/') or 'application/json' in accept
+            
+            if not is_json_request:
                 return redirect('/login')
             return jsonify({'error': 'Token missing or invalid'}), 401
         return f(*args, **kwargs)
