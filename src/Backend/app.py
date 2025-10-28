@@ -89,4 +89,5 @@ logging.getLogger(__name__).info(
 
 if __name__ == '__main__':
     # IMPORTANT: no reloader in Docker; it double-imports
-    app.run(debug=True, use_reloader=False, host="0.0.0.0", port=5000)
+    port = int(os.environ.get('PORT', 5000))  # Default to 5000 if PORT not set
+    app.run(host='0.0.0.0', port=port)
