@@ -74,6 +74,7 @@ def driver_home():
     return render_template('driver_landing.html')
 
 @routes_bp.route('/cart')
+@token_required
 def cart_page():
     return render_template('cart.html')
 

@@ -382,3 +382,36 @@ body {
     box-shadow: 0 2px 4px rgba(0,0,0,0.3);
     z-index: 10;
 }
+/* Hide Product Button */
+.tile-header {
+    position: relative;
+    display: flex;
+    justify-content: space-between;
+    align-items: start;
+}
+
+.hide-product-btn {
+    background: var(--c-gray-600);
+    color: var(--c-text-tertiary);
+    border: none;
+    width: 28px;
+    height: 28px;
+    border-radius: 4px;
+    cursor: pointer;
+    font-size: 1.2rem;
+    line-height: 1;
+    transition: all 0.2s ease;
+    flex-shrink: 0;
+}
+
+.hide-product-btn:hover {
+    background: var(--c-red);
+    color: white;
+    transform: scale(1.1);
+}
+
+/* Hidden product state */
+.product-item.being-hidden {
+    opacity: 0.5;
+    pointer-events: none;
+}

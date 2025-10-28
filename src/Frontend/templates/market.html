@@ -7,6 +7,7 @@
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/market.css') }}">
     <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
+    <!-- <script>Auth.requireAuth('/login');</script> -->
 </head>
 <body>
     <div class="responsive-wrapper">
@@ -18,7 +19,11 @@
                         <span>Catalog</span>
                     </div>
                 </div>
-                <div style="margin-left: auto;">
+                <div style="margin-left: auto; display: flex; align-items: center; gap: 1rem;">
+                    <!-- Balance Display -->
+                    <div id="balance-display" style="background: var(--c-gray-700); padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; color: var(--c-green-500);">
+                        <span id="user-balance">--</span> points
+                    </div>
                     <a href="/cart" class="view-cart-link">
                         🛒 View Cart
                     </a>
@@ -56,6 +61,11 @@
                                          data-category="{{ product.category }}">
                                         <div class="tile-header">
                                             <h3>{{ product.title }}</h3>
+                                            <button class="hide-product-btn" 
+                                                    data-product-id="{{ product.id }}"
+                                                    title="Hide this product">
+                                                ✕
+                                            </button>
                                         </div>
                                         <div class="card-content">
                                             <div class="image-container">

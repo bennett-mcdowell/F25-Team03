@@ -10,6 +10,7 @@ DROP TRIGGER IF EXISTS trg_loginlog_after_insert;
 
 DROP EVENT IF EXISTS ev_purge_expired_sessions;
 
+DROP TABLE IF EXISTS driver_catalog_curation;
 DROP TABLE IF EXISTS current_sessions;
 DROP TABLE IF EXISTS login_log;
 DROP TABLE IF EXISTS transactions;
@@ -143,6 +144,22 @@ CREATE TABLE transactions (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =====================================================================
+-- DRIVER CATALOG CURATION: hide/show products from API
+-- =====================================================================
+CREATE TABLE driver_catalog_curation (
+  curation_id INT NOT NULL AUTO_INCREMENT,
+  driver_id INT NOT NULL,
+  product_id INT NOT NULL,                      -- ID from Fake Store API
+  is_hidden TINYINT(1) NOT NULL DEFAULT 1,      -- 1 = hidden, 0 = visible
+  hidden_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (curation_id),
+  UNIQUE KEY uq_driver_product (driver_id, product_id),
+  CONSTRAINT fk_curation_driver
+    FOREIGN KEY (driver_id) REFERENCES driver(driver_id)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =====================================================================
 -- AUDIT: login_log (app writes; trigger updates lockout)
 -- =====================================================================
 CREATE TABLE login_log (
@@ -199,10 +216,6 @@ CREATE TABLE change_log (
     FOREIGN KEY (user_id) REFERENCES `user`(user_id)
     ON UPDATE CASCADE ON DELETE SET NULL
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- Example insert your app might do:
--- INSERT INTO change_log (user_id, change_type) 
--- VALUES (123, 'DRIVER_BALANCE_UPDATE');
 
 -- =====================================================================
 -- TRIGGERS: role exclusivity + lockout updates via login_log
@@ -344,7 +357,7 @@ INSERT INTO login_info (user_id, failed_attempts, is_locked, locked_until, secur
 (2, 0, 0, NULL, 'What city were you born in?', 'Columbia'),
 (3, 0, 0, NULL, 'What is your favorite color?', 'Blue'),
 (4, 0, 0, NULL, 'What was your first car?', 'Civic'),
-(5, 0, 0, NULL, 'What is your pet’s name?', 'Rex');
+(5, 0, 0, NULL, 'What is your pet's name?', 'Rex');
 
 -- roles
 INSERT INTO admin (user_id, admin_permissions) VALUES
