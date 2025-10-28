@@ -3,7 +3,7 @@
 <head>
   <meta charset="UTF-8" />
   <meta name="viewport" content="width=device-width, initial-scale=1.0" />
-  <title>Dashboard - Home</title>
+  <title>Driver Dashboard</title>
   <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}" />
 </head>
 <body>
@@ -13,7 +13,7 @@
       <header class="app-header">
         <div class="logo">
           <div class="logo-title">
-            <span>My Dashboard</span>
+            <span>Driver Dashboard</span>
           </div>
         </div>
       </header>
@@ -31,22 +31,16 @@
                 <i class="ph-star"></i>
                 <h3>
                   <span id="pointsDisplay">0</span>
-                  <span>Available Points</span>
+                  <span>Total Points Available</span>
                 </h3>
               </div>
             </div>
           </div>
 
-          <div class="transfer-section">
-            <div class="transfer-section-header">
-              <h2>Featured Catalog</h2>
-            </div>
-
-            <div class="tiles" id="productCatalog">
-              <!-- Product cards will be injected here by JS -->
-              <script>
-                const staticBase = "{{ url_for('static', filename='img/') }}";
-              </script>
+          <div class="sponsor-section">
+            <h2>Your Sponsors</h2>
+            <div id="sponsorList" class="sponsor-list">
+              <p>Loading sponsors...</p>
             </div>
           </div>
         </section>
@@ -54,7 +48,7 @@
     </div>
   </div>
 
-  <script src="{{ url_for('static', filename='js/landing_page.js') }}"></script>
+  <script src="{{ url_for('static', filename='js/driver_landing.js') }}"></script>
   <script src="{{ url_for('static', filename='js/sidebar.js') }}"></script>
 </body>
 </html>

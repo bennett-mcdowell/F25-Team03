@@ -51,6 +51,7 @@ def configure_logging():
 from routes import routes_bp
 from auth import auth_bp
 from account import account_bp 
+from sponsor import sponsor_bp
 
 # App initialization
 load_dotenv()
@@ -77,6 +78,7 @@ cache = Cache(app, config={'CACHE_TYPE': 'SimpleCache'})
 app.register_blueprint(routes_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(account_bp)
+app.register_blueprint(sponsor_bp)
 
 # Optional: prove ENV values at startup (safe ones)
 logging.getLogger(__name__).info(

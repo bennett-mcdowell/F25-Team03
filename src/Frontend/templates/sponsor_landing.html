@@ -68,6 +68,29 @@
               <!-- Drivers will be populated by sponsor_landing.js -->
             </div>
           </div>
+          
+          <!-- NEW: Pending Driver Requests Section -->
+          <div class="transfer-section">
+            <div class="transfer-section-header">
+              <h2>Pending Driver Requests</h2>
+            </div>
+
+            <!-- We will inject each pending driver as a row/card into this .transfers block -->
+            <div class="transfers" id="pendingDriverList">
+              <!-- Populated by JS -->
+            </div>
+
+            <!-- Empty state -->
+            <div id="pendingDriverEmpty" class="loading" style="display:none;">
+              No pending driver requests.
+            </div>
+
+            <!-- Error state -->
+            <div id="pendingDriverError" class="error-text" style="display:none;">
+              Could not load pending drivers.
+            </div>
+          </div>
+          <!-- /NEW -->
         </section>
       </main>
     </div>

@@ -2,6 +2,7 @@ import os
 import datetime
 import logging
 import traceback
+import datetime
 from flask import Blueprint, request, jsonify, g, redirect, current_app
 from functools import wraps
 from werkzeug.security import generate_password_hash, check_password_hash
@@ -145,11 +146,19 @@ def register():
               (user_id, sec_q, sec_a),
               label="insert login_info")
 
-        # 4) driver (link to sponsor we validated)
+
+        # 4) driver
         _exec(cur,
-              "INSERT INTO driver (user_id, balance, sponsor_id) VALUES (%s, %s, %s)",
-              (user_id, 0.00, sponsor_id_val),
+              "INSERT INTO driver (user_id) VALUES (%s)",
+              (user_id,),
               label="insert driver")
+        
+        driver_id = cur.lastrowid
+        # 5) driver_sponsor relationship
+        _exec(cur,
+                "INSERT INTO driver_sponsor (driver_id, sponsor_id, balance, status, since_at) VALUES (%s, %s, %s, 'ACTIVE', NOW())",
+                (driver_id, sponsor_id_val, 0.00),
+                label="insert driver_sponsor")
 
         conn.commit()
         logger.info("Transaction committed (register)")
@@ -337,7 +346,9 @@ def token_required(f):
         except Exception as exc:
             logger.info(f"token_required: JWT verification failed (cookie_present={has_cookie}) -> {type(exc).__name__}: {str(exc)}")
             accept = request.headers.get('Accept', '')
-            if 'text/html' in accept:
+            is_json_request = request.path.startswith('/api/') or 'application/json' in accept
+            
+            if not is_json_request:
                 return redirect('/login')
             return jsonify({'error': 'Token missing or invalid'}), 401
         return f(*args, **kwargs)

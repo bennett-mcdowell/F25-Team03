@@ -17,17 +17,26 @@ jobs:
         uses: appleboy/ssh-action@master
         env:
           PORT: ${{ secrets.EC2_PORT }}
+          DB_HOST: ${{ secrets.DB_HOST }}
+          DB_NAME: ${{ secrets.DB_NAME }}
+          DB_USER: ${{ secrets.DB_USER }}
+          DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: PORT
+          envs: PORT,DB_HOST,DB_NAME,DB_USER,DB_PASSWORD
           script: |
             cd /home/ec2-user/F25-Team03
             git pull origin main
             cd src
             pip3 install -r requirements.txt
             cd Backend
+            
+            # Insert deployment record
+            DB_HOST=$DB_HOST DB_NAME=$DB_NAME DB_USER=$DB_USER DB_PASSWORD=$DB_PASSWORD python3 insert_deployment.py
+            
+            # Restart app
             pm2 delete flask-app || true
             PORT=$PORT pm2 start app.py --name flask-app --interpreter python3
             pm2 save

@@ -543,12 +543,22 @@ def sponsor_accounts_api():
         sponsor_id = sponsor["sponsor_id"]
 
         # --- Get drivers associated with this sponsor ---
-        cur.execute("""
-            SELECT d.driver_id, d.name, d.points, d.active,
-            FROM driver d
-            JOIN driver_sponsor ds ON ds.driver_id = d.driver_id
+        cur.execute("""   
+            SELECT
+            d.driver_id,
+            u.user_id,
+            u.first_name,
+            u.last_name,
+            u.email,
+            ds.balance,
+            ds.status,
+            ds.since_at,
+            ds.until_at
+            FROM driver_sponsor ds
+            JOIN driver d ON ds.driver_id = d.driver_id
+            JOIN `user` u ON d.user_id = u.user_id
             WHERE ds.sponsor_id = %s
-            ORDER BY d.name
+            ORDER BY u.last_name, u.first_name
         """, (sponsor_id,))
         drivers = cur.fetchall() or []
 
@@ -561,6 +571,86 @@ def sponsor_accounts_api():
             "active_drivers": active_drivers,
             "drivers": drivers
         })
+
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
+
+@account_bp.route("/api/sponsor/driver/<int:driver_id>/add_points", methods=["POST"])
+@token_required
+@require_role("sponsor")
+def sponsor_add_points(driver_id):
+    """
+    Allow a sponsor to add points to a driver's balance.
+    Expects JSON body: { "points": <number> }
+    Returns the updated balance.
+    """
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        user_id = int(user_id)
+    except Exception:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    points = data.get("points")
+
+    # Validate points
+    if not points or not isinstance(points, (int, float)) or points <= 0:
+        return jsonify({"error": "Invalid points value"}), 400
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # Get sponsor_id for this user
+        cur.execute("SELECT sponsor_id FROM sponsor WHERE user_id = %s", (user_id,))
+        sponsor = cur.fetchone()
+        if not sponsor:
+            return jsonify({"error": "Sponsor not found"}), 404
+
+        sponsor_id = sponsor["sponsor_id"]
+
+        # Verify that this sponsor is associated with the driver
+        cur.execute("""
+            SELECT driver_sponsor_id, balance
+            FROM driver_sponsor
+            WHERE driver_id = %s AND sponsor_id = %s
+        """, (driver_id, sponsor_id))
+        ds_row = cur.fetchone()
+
+        if not ds_row:
+            return jsonify({"error": "Driver not found or not associated with this sponsor"}), 404
+
+        driver_sponsor_id = ds_row["driver_sponsor_id"]
+        current_balance = float(ds_row["balance"] or 0)
+
+        # Add points to balance
+        new_balance = current_balance + float(points)
+
+        cur.execute("""
+            UPDATE driver_sponsor
+            SET balance = %s
+            WHERE driver_sponsor_id = %s
+        """, (new_balance, driver_sponsor_id))
+        conn.commit()
+
+        return jsonify({
+            "message": "Points added successfully",
+            "new_points": new_balance,
+            "added": float(points)
+        }), 200
+
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        logging.error(f"Error adding points: {e}")
+        return jsonify({"error": str(e)}), 500
 
     finally:
         if cur:
@@ -827,3 +917,190 @@ def admin_bulk_accounts():
         if cur is not None:
             cur.close()
         conn.close()
+
+@account_bp.route("/api/driver/sponsors", methods=["GET"])
+@token_required
+@require_role("driver")
+def driver_sponsors_api():
+    """Return a list of sponsors and point balances for the logged-in driver."""
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        user_id = int(user_id)
+    except Exception:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # Find this user's driver_id
+        cur.execute("SELECT driver_id FROM driver WHERE user_id = %s", (user_id,))
+        drow = cur.fetchone()
+        if not drow:
+            return jsonify({"error": "Driver not found"}), 404
+        driver_id = drow["driver_id"]
+
+        # Get all sponsors and balances
+        cur.execute("""
+            SELECT
+                s.sponsor_id,
+                s.name AS sponsor_name,
+                s.description,
+                ds.balance
+            FROM driver_sponsor ds
+            JOIN sponsor s ON s.sponsor_id = ds.sponsor_id
+            WHERE ds.driver_id = %s
+            ORDER BY s.name
+        """, (driver_id,))
+        sponsors = cur.fetchall() or []
+
+        total_points = float(sum((row.get("balance") or 0) for row in sponsors))
+
+        return jsonify({
+            "driver_id": driver_id,
+            "total_points": total_points,
+            "sponsors": sponsors
+        }), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+        
+@account_bp.route('/api/driver/catalog/hidden', methods=['GET'])
+@token_required
+def get_hidden_products():
+    """
+    Get list of product IDs that the current driver has hidden
+    """
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    try:
+        user_id = int(user_id)
+    except Exception:
+        return jsonify({"error": "Invalid user ID"}), 401
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        
+        # Get driver_id
+        cur.execute("""
+            SELECT d.driver_id 
+            FROM driver d
+            JOIN `user` u ON d.user_id = u.user_id
+            WHERE u.user_id = %s AND u.type_id = 3
+        """, (user_id,))
+        d = cur.fetchone()
+        
+        if not d:
+            return jsonify({"error": "Driver not found"}), 404
+        
+        driver_id = d["driver_id"]
+        
+        # Get all hidden product IDs
+        cur.execute("""
+            SELECT product_id
+            FROM driver_catalog_curation
+            WHERE driver_id = %s AND is_hidden = 1
+        """, (driver_id,))
+        
+        hidden_products = [row["product_id"] for row in cur.fetchall()]
+        
+        return jsonify({
+            "hidden_products": hidden_products,
+            "driver_id": driver_id
+        }), 200
+        
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
+@account_bp.route('/api/driver/catalog/toggle', methods=['POST'])
+@token_required
+def toggle_product_visibility():
+    """
+    Toggle product visibility for current driver
+    Body: { "product_id": 123, "is_hidden": true/false }
+    """
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    try:
+        user_id = int(user_id)
+    except Exception:
+        return jsonify({"error": "Invalid user ID"}), 401
+    
+    data = request.get_json() or {}
+    product_id = data.get('product_id')
+    is_hidden = data.get('is_hidden', True)
+    
+    if not product_id:
+        return jsonify({"error": "product_id required"}), 400
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        conn.autocommit = False
+        cur = conn.cursor(dictionary=True)
+        
+        # Verify user is a driver
+        cur.execute("""
+            SELECT d.driver_id 
+            FROM driver d
+            JOIN `user` u ON d.user_id = u.user_id
+            WHERE u.user_id = %s AND u.type_id = 3
+        """, (user_id,))
+        d = cur.fetchone()
+        
+        if not d:
+            return jsonify({"error": "Only drivers can curate catalog"}), 403
+        
+        driver_id = d["driver_id"]
+        
+        # Upsert curation record
+        cur.execute("""
+            INSERT INTO driver_catalog_curation (driver_id, product_id, is_hidden, hidden_at)
+            VALUES (%s, %s, %s, NOW())
+            ON DUPLICATE KEY UPDATE 
+                is_hidden = VALUES(is_hidden),
+                hidden_at = IF(VALUES(is_hidden) = 1, NOW(), hidden_at)
+        """, (driver_id, product_id, 1 if is_hidden else 0))
+        
+        conn.commit()
+        
+        return jsonify({
+            "success": True,
+            "product_id": product_id,
+            "is_hidden": is_hidden
+        }), 200
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error toggling product visibility: {e}")
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
