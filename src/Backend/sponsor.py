@@ -1,5 +1,5 @@
 # src/Backend/sponsor.py
-from flask import Blueprint, jsonify, g
+from flask import Blueprint, jsonify, g, request
 from utils.db import get_db_connection
 from auth import token_required
 import mysql.connector
@@ -150,6 +150,61 @@ def approve_pending_driver(driver_id):
         conn.commit()
 
         return jsonify({"message": "Driver approved successfully"}), 200
+
+    except mysql.connector.Error as e:
+        conn.rollback()
+        return jsonify({"error": "Database error", "details": str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
+@sponsor_bp.route("/api/sponsor/driver/<int:driver_id>/reject", methods=["POST"])
+@token_required
+def reject_pending_driver(driver_id):
+    """
+    Reject a pending driver application for the logged-in sponsor.
+    Sets driver_sponsor.status = 'INACTIVE'
+    """
+    sponsor_user_id = getattr(g, "decoded_token", {}).get("user_id") or getattr(g, "decoded_token", {}).get("sub")
+    if not sponsor_user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    reason = data.get("reason", "No reason provided")
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute("SELECT sponsor_id FROM sponsor WHERE user_id = %s", (sponsor_user_id,))
+        sponsor = cur.fetchone()
+        if not sponsor:
+            return jsonify({"error": "User is not a sponsor"}), 403
+        sponsor_id = sponsor["sponsor_id"]
+
+        cur.execute(
+            """
+            UPDATE driver_sponsor
+            SET status = 'INACTIVE'
+            WHERE driver_id = %s
+              AND sponsor_id = %s
+              AND status = 'PENDING'
+            """,
+            (driver_id, sponsor_id)
+        )
+
+        if cur.rowcount == 0:
+            conn.rollback()
+            return jsonify({"error": "No pending record found for this driver"}), 404
+
+        conn.commit()
+
+        # When rejection reason is added it will be here
+        print(f"Driver {driver_id} rejected by sponsor {sponsor_id}. Reason: {reason}")
+
+        return jsonify({"message": "Driver rejected successfully", "reason": reason}), 200
 
     except mysql.connector.Error as e:
         conn.rollback()
