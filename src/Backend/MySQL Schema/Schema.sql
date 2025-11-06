@@ -11,6 +11,7 @@ DROP TRIGGER IF EXISTS trg_loginlog_after_insert;
 DROP EVENT IF EXISTS ev_purge_expired_sessions;
 
 DROP TABLE IF EXISTS driver_catalog_curation;
+
 DROP TABLE IF EXISTS current_sessions;
 DROP TABLE IF EXISTS login_log;
 DROP TABLE IF EXISTS transactions;
@@ -140,7 +141,29 @@ CREATE TABLE driver_catalog_curation (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =====================================================================
--- AUDIT: login_log (app writes; trigger updates lockout)
+-- DRIVER–SPONSOR M:N with per-pair BALANCE
+-- =====================================================================
+CREATE TABLE driver_sponsor (
+  driver_sponsor_id BIGINT NOT NULL AUTO_INCREMENT,
+  driver_id INT NOT NULL,
+  sponsor_id INT NOT NULL,
+  balance DECIMAL(10,2) NOT NULL DEFAULT 0.00,     -- balance per (driver,sponsor)
+  status ENUM('ACTIVE','INACTIVE','PENDING') NOT NULL DEFAULT 'ACTIVE',
+  since_at DATETIME NULL,
+  until_at DATETIME NULL,
+  PRIMARY KEY (driver_sponsor_id),
+  UNIQUE KEY uq_driver_sponsor_pair (driver_id, sponsor_id),
+  KEY idx_driver (driver_id),
+  KEY idx_sponsor (sponsor_id),
+  CONSTRAINT fk_ds_driver
+    FOREIGN KEY (driver_id) REFERENCES driver(driver_id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_ds_sponsor
+    FOREIGN KEY (sponsor_id) REFERENCES sponsor(sponsor_id)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =====================================================================
 -- TRANSACTIONS (optionally tie to a specific driver_sponsor pair)
 -- =====================================================================
 CREATE TABLE transactions (
@@ -356,7 +379,7 @@ INSERT INTO login_info (user_id, failed_attempts, is_locked, locked_until, secur
 (2, 0, 0, NULL, 'What city were you born in?', 'Columbia'),
 (3, 0, 0, NULL, 'What is your favorite color?', 'Blue'),
 (4, 0, 0, NULL, 'What was your first car?', 'Civic'),
-(5, 0, 0, NULL, 'What is your pet's name?', 'Rex');
+(5, 0, 0, NULL, 'What is your pets name?', 'Rex');
 
 -- roles
 INSERT INTO admin (user_id, admin_permissions) VALUES (1, 1023);
