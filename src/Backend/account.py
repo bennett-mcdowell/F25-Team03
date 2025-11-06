@@ -34,7 +34,7 @@ def account_api():
     conn = get_db_connection()
     cur = None
     try:
-        cur = conn.cursor(dictionary=True)  # <-- no context manager; will close manually
+        cur = conn.cursor(dictionary=True)
 
         # 1) Base user
         cur.execute("SELECT * FROM `user` WHERE user_id = %s", (user_id,))
@@ -360,16 +360,26 @@ def sponsor_bulk_drivers():
                         VALUES (%s, 0, 0, NULL, %s, %s)
                     """, (driver_user_id, "Default question", "Default answer"))
 
-                # Ensure driver record points to this sponsor
-                cur.execute("SELECT driver_id, sponsor_id FROM driver WHERE user_id=%s", (driver_user_id,))
+                # Ensure driver record exists
+                cur.execute("SELECT driver_id FROM driver WHERE user_id=%s", (driver_user_id,))
                 drow = cur.fetchone()
-                if drow:
-                    if drow["sponsor_id"] != sponsor_id:
-                        cur.execute("UPDATE driver SET sponsor_id=%s WHERE driver_id=%s", (sponsor_id, drow["driver_id"]))
+                if not drow:
+                    cur.execute("INSERT INTO driver (user_id) VALUES (%s)", (driver_user_id,))
+                    driver_id = cur.lastrowid
                 else:
+                    driver_id = drow["driver_id"]
+
+                # Link to sponsor via driver_sponsor if not already linked
+                cur.execute("""
+                    SELECT driver_sponsor_id FROM driver_sponsor 
+                    WHERE driver_id = %s AND sponsor_id = %s
+                """, (driver_id, sponsor_id))
+                
+                if not cur.fetchone():
                     cur.execute("""
-                        INSERT INTO driver (user_id, balance, sponsor_id) VALUES (%s, %s, %s)
-                    """, (driver_user_id, 0.00, sponsor_id))
+                        INSERT INTO driver_sponsor (driver_id, sponsor_id, balance, status, since_at)
+                        VALUES (%s, %s, 0.00, 'ACTIVE', NOW())
+                    """, (driver_id, sponsor_id))
 
                 conn.commit()
                 success += 1
@@ -416,12 +426,16 @@ def purchase_api():
     except Exception:
         return jsonify({"error": "Invalid user ID"}), 401
     
-    # Get cart items from request
+    # Get cart items and sponsor_id from request
     data = request.get_json() or {}
     cart_items = data.get('items', [])
+    sponsor_id = data.get('sponsor_id')
     
     if not cart_items:
         return jsonify({"error": "Cart is empty"}), 400
+    
+    if not sponsor_id:
+        return jsonify({"error": "sponsor_id required"}), 400
     
     conn = None
     cur = None
@@ -432,28 +446,37 @@ def purchase_api():
         
         # 1. Verify user is a driver
         cur.execute("""
-            SELECT u.type_id, d.driver_id, d.balance, d.sponsor_id 
-            FROM `user` u
-            LEFT JOIN driver d ON u.user_id = d.user_id
-            WHERE u.user_id = %s
+            SELECT d.driver_id
+            FROM driver d
+            JOIN `user` u ON d.user_id = u.user_id
+            WHERE u.user_id = %s AND u.type_id = 3
         """, (user_id,))
-        user_data = cur.fetchone()
+        driver_data = cur.fetchone()
         
-        if not user_data or user_data['type_id'] != 3:
+        if not driver_data:
             return jsonify({"error": "Only drivers can make purchases"}), 403
         
-        if not user_data['driver_id']:
-            return jsonify({"error": "Driver record not found"}), 404
+        driver_id = driver_data['driver_id']
         
-        current_balance = float(user_data['balance'])
-        driver_id = user_data['driver_id']
-        sponsor_id = user_data['sponsor_id']
+        # 2. Get driver-sponsor relationship and balance
+        cur.execute("""
+            SELECT driver_sponsor_id, balance
+            FROM driver_sponsor
+            WHERE driver_id = %s AND sponsor_id = %s AND status = 'ACTIVE'
+        """, (driver_id, sponsor_id))
         
-        # 2. Calculate total cost (items are already in points)
+        ds_row = cur.fetchone()
+        if not ds_row:
+            return jsonify({"error": "No active relationship with this sponsor"}), 403
+        
+        driver_sponsor_id = ds_row['driver_sponsor_id']
+        current_balance = float(ds_row['balance'])
+        
+        # 3. Calculate total cost (items are already in points)
         total_points = sum(item.get('price', 0) * item.get('quantity', 1) for item in cart_items)
         total_dollars = total_points / 100.0  # Convert points back to dollars for DB
         
-        # 3. Check if driver has enough balance
+        # 4. Check if driver has enough balance
         if current_balance < total_dollars:
             return jsonify({
                 "error": "Insufficient balance",
@@ -462,32 +485,32 @@ def purchase_api():
                 "shortfall": int((total_dollars - current_balance) * 100)
             }), 400
         
-        # 4. Deduct from driver balance
+        # 5. Deduct from driver_sponsor balance
         new_balance = current_balance - total_dollars
         cur.execute("""
-            UPDATE driver 
+            UPDATE driver_sponsor 
             SET balance = %s 
-            WHERE driver_id = %s
-        """, (new_balance, driver_id))
+            WHERE driver_sponsor_id = %s
+        """, (new_balance, driver_sponsor_id))
         
-        # 5. Create transaction records for each item
+        # 6. Create transaction records for each item
         transaction_time = datetime.datetime.now()
         for item in cart_items:
             item_price_dollars = (item.get('price', 0) * item.get('quantity', 1)) / 100.0
             cur.execute("""
-                INSERT INTO transactions (`date`, user_id, amount, item_id)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO transactions (`date`, user_id, amount, item_id, driver_sponsor_id)
+                VALUES (%s, %s, %s, %s, %s)
             """, (
                 transaction_time,
                 user_id,
                 -item_price_dollars,  # Negative for purchases
-                item.get('id', None)  # Product ID from Fake Store API
+                item.get('id', None),  # Product ID from Fake Store API
+                driver_sponsor_id  # Attribution to specific sponsor
             ))
         
-        # 6. Calculate 1% commission for sponsor (if sponsor exists)
-        if sponsor_id:
-            commission = total_dollars * 0.01
-            print(f"Commission of ${commission:.2f} for sponsor_id {sponsor_id}")
+        # 7. Calculate 1% commission for sponsor
+        commission = total_dollars * 0.01
+        print(f"Commission of ${commission:.2f} for sponsor_id {sponsor_id}")
         
         conn.commit()
         
@@ -497,7 +520,8 @@ def purchase_api():
             "items_purchased": len(cart_items),
             "total_spent": total_points,
             "new_balance": int(new_balance * 100),
-            "previous_balance": int(current_balance * 100)
+            "previous_balance": int(current_balance * 100),
+            "sponsor_id": sponsor_id
         }), 200
         
     except Exception as e:
@@ -513,7 +537,6 @@ def purchase_api():
             cur.close()
         if conn:
             conn.close()
-        conn.close()
 
 # Sponsor Accounts API
 @account_bp.route("/api/sponsor/accounts", methods=["GET"])
@@ -1162,7 +1185,8 @@ def sponsor_remove_driver_api():
 @token_required
 def get_hidden_products():
     """
-    Get list of product IDs that the current driver has hidden
+    Get list of product IDs that the current driver has hidden from ALL their sponsors
+    Returns a flat list of product_ids (since hiding is now sponsor-agnostic per Option A)
     """
     user_id = _claims_user_id()
     if not user_id:
@@ -1193,9 +1217,11 @@ def get_hidden_products():
         
         driver_id = d["driver_id"]
         
-        # Get all hidden product IDs
+        # Get all DISTINCT hidden product IDs across all sponsors
+        # Since we're doing Option A (hide from all sponsors at once),
+        # we just return unique product_ids
         cur.execute("""
-            SELECT product_id
+            SELECT DISTINCT product_id
             FROM driver_catalog_curation
             WHERE driver_id = %s AND is_hidden = 1
         """, (driver_id,))
@@ -1218,8 +1244,10 @@ def get_hidden_products():
 @token_required
 def toggle_product_visibility():
     """
-    Toggle product visibility for current driver
+    Toggle product visibility for current driver across ALL their sponsors (Option A)
     Body: { "product_id": 123, "is_hidden": true/false }
+    
+    This will hide/show the product for ALL sponsors the driver is associated with
     """
     user_id = _claims_user_id()
     if not user_id:
@@ -1258,27 +1286,43 @@ def toggle_product_visibility():
         
         driver_id = d["driver_id"]
         
-        # Upsert curation record
+        # Get all active sponsor relationships for this driver
         cur.execute("""
-            INSERT INTO driver_catalog_curation (driver_id, product_id, is_hidden, hidden_at)
-            VALUES (%s, %s, %s, NOW())
-            ON DUPLICATE KEY UPDATE 
-                is_hidden = VALUES(is_hidden),
-                hidden_at = IF(VALUES(is_hidden) = 1, NOW(), hidden_at)
-        """, (driver_id, product_id, 1 if is_hidden else 0))
+            SELECT sponsor_id
+            FROM driver_sponsor
+            WHERE driver_id = %s AND status = 'ACTIVE'
+        """, (driver_id,))
+        
+        sponsor_rows = cur.fetchall()
+        if not sponsor_rows:
+            return jsonify({"error": "Driver has no active sponsors"}), 403
+        
+        # Hide/show product for ALL sponsors
+        for row in sponsor_rows:
+            sponsor_id = row['sponsor_id']
+            cur.execute("""
+                INSERT INTO driver_catalog_curation (driver_id, sponsor_id, product_id, is_hidden, hidden_at)
+                VALUES (%s, %s, %s, %s, NOW())
+                ON DUPLICATE KEY UPDATE 
+                    is_hidden = VALUES(is_hidden),
+                    hidden_at = IF(VALUES(is_hidden) = 1, NOW(), hidden_at)
+            """, (driver_id, sponsor_id, product_id, 1 if is_hidden else 0))
         
         conn.commit()
         
         return jsonify({
             "success": True,
             "product_id": product_id,
-            "is_hidden": is_hidden
+            "is_hidden": is_hidden,
+            "applied_to_sponsors": len(sponsor_rows)
         }), 200
         
     except Exception as e:
         if conn:
             conn.rollback()
         print(f"Error toggling product visibility: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
         
     finally:
@@ -1286,8 +1330,6 @@ def toggle_product_visibility():
             cur.close()
         if conn:
             conn.close()
-
-# Add these routes to your account blueprint
 
 # Get individual account details
 @account_bp.route("/api/admin/account/<int:user_id>", methods=["GET"])
@@ -1521,7 +1563,7 @@ def reset_user_password(user_id):
         
         # Update user password
         cur.execute("""
-            UPDATE `user` 
+            UPDATE user_credentials 
             SET password = %s 
             WHERE user_id = %s
         """, (hashed_password, user_id))

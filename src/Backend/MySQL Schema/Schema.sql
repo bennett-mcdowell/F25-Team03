@@ -125,22 +125,6 @@ CREATE TABLE driver (
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
 
 -- =====================================================================
--- DRIVER CATALOG CURATION: hide/show products from API
--- =====================================================================
-CREATE TABLE driver_catalog_curation (
-  curation_id INT NOT NULL AUTO_INCREMENT,
-  driver_id INT NOT NULL,
-  product_id INT NOT NULL,                      -- ID from Fake Store API
-  is_hidden TINYINT(1) NOT NULL DEFAULT 1,      -- 1 = hidden, 0 = visible
-  hidden_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
-  PRIMARY KEY (curation_id),
-  UNIQUE KEY uq_driver_product (driver_id, product_id),
-  CONSTRAINT fk_curation_driver
-    FOREIGN KEY (driver_id) REFERENCES driver(driver_id)
-    ON UPDATE CASCADE ON DELETE CASCADE
-) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
-
--- =====================================================================
 -- DRIVER–SPONSOR M:N with per-pair BALANCE
 -- =====================================================================
 CREATE TABLE driver_sponsor (
@@ -159,6 +143,29 @@ CREATE TABLE driver_sponsor (
     FOREIGN KEY (driver_id) REFERENCES driver(driver_id)
     ON UPDATE CASCADE ON DELETE CASCADE,
   CONSTRAINT fk_ds_sponsor
+    FOREIGN KEY (sponsor_id) REFERENCES sponsor(sponsor_id)
+    ON UPDATE CASCADE ON DELETE CASCADE
+) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
+
+-- =====================================================================
+-- DRIVER CATALOG CURATION: hide/show products from API (per sponsor)
+-- UPDATED: Now includes sponsor_id for per-sponsor curation
+-- =====================================================================
+CREATE TABLE driver_catalog_curation (
+  curation_id INT NOT NULL AUTO_INCREMENT,
+  driver_id INT NOT NULL,
+  sponsor_id INT NOT NULL,                      -- ADDED: sponsor context
+  product_id INT NOT NULL,                      -- ID from Fake Store API
+  is_hidden TINYINT(1) NOT NULL DEFAULT 1,      -- 1 = hidden, 0 = visible
+  hidden_at DATETIME NOT NULL DEFAULT CURRENT_TIMESTAMP,
+  PRIMARY KEY (curation_id),
+  UNIQUE KEY uq_driver_sponsor_product (driver_id, sponsor_id, product_id),  -- UPDATED
+  KEY idx_curation_driver (driver_id),
+  KEY idx_curation_sponsor (sponsor_id),        -- ADDED
+  CONSTRAINT fk_curation_driver
+    FOREIGN KEY (driver_id) REFERENCES driver(driver_id)
+    ON UPDATE CASCADE ON DELETE CASCADE,
+  CONSTRAINT fk_curation_sponsor                -- ADDED
     FOREIGN KEY (sponsor_id) REFERENCES sponsor(sponsor_id)
     ON UPDATE CASCADE ON DELETE CASCADE
 ) ENGINE=InnoDB DEFAULT CHARSET=utf8mb4;
