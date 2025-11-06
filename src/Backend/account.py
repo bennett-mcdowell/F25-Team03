@@ -1286,3 +1286,259 @@ def toggle_product_visibility():
             cur.close()
         if conn:
             conn.close()
+
+# Add these routes to your account blueprint
+
+# Get individual account details
+@account_bp.route("/api/admin/account/<int:user_id>", methods=["GET"])
+@token_required
+@require_role("admin")
+def get_account_detail(user_id):
+    """Get detailed information about a specific user account"""
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # Get user data
+        cur.execute("SELECT * FROM `user` WHERE user_id = %s", (user_id,))
+        user = cur.fetchone()
+        
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        type_id = user.get("type_id")
+        
+        # Remove sensitive fields
+        user_data = {
+            k: v for k, v in user.items()
+            if k.lower() not in ["password", "created_at", "updated_at"]
+        }
+
+        # Get user type info
+        cur.execute("SELECT * FROM user_type WHERE type_id = %s", (type_id,))
+        trow = cur.fetchone()
+        type_info = dict(trow) if trow else None
+        role_name = type_info.get("type_name") if type_info else None
+
+        # Get role-specific details
+        role_blob = None
+
+        # Admin
+        if type_id == 1:
+            cur.execute("""
+                SELECT admin_id, user_id, admin_permissions
+                FROM admin
+                WHERE user_id = %s
+            """, (user_id,))
+            r = cur.fetchone()
+            if r:
+                role_blob = dict(r)
+
+        # Sponsor
+        elif type_id == 2:
+            cur.execute("""
+                SELECT sponsor_id, user_id, name, description
+                FROM sponsor
+                WHERE user_id = %s
+            """, (user_id,))
+            r = cur.fetchone()
+            if r:
+                role_blob = dict(r)
+
+        # Driver
+        elif type_id == 3:
+            cur.execute("SELECT driver_id FROM driver WHERE user_id = %s", (user_id,))
+            drow = cur.fetchone()
+            if drow:
+                driver_id = drow["driver_id"]
+                role_blob = {"driver_id": driver_id}
+
+                # Get sponsors for this driver
+                cur.execute("""
+                    SELECT
+                        ds.driver_sponsor_id,
+                        ds.balance,
+                        ds.status,
+                        ds.since_at,
+                        ds.until_at,
+                        s.sponsor_id,
+                        s.name,
+                        s.description
+                    FROM driver_sponsor ds
+                    JOIN sponsor s ON s.sponsor_id = ds.sponsor_id
+                    WHERE ds.driver_id = %s
+                    ORDER BY s.name
+                """, (driver_id,))
+                sponsors = cur.fetchall() or []
+                role_blob["sponsors"] = sponsors
+                role_blob["total_balance"] = float(sum((row.get("balance") or 0) for row in sponsors))
+
+        return jsonify({
+            "user": user_data,
+            "type": type_info,
+            "role_name": role_name,
+            "role": role_blob
+        }), 200
+
+    except Exception as e:
+        print("Error in /api/admin/account/<user_id>:", e)
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
+
+# Update account details
+@account_bp.route("/api/admin/account/<int:user_id>", methods=["PUT"])
+@token_required
+@require_role("admin")
+def update_account(user_id):
+    """Update user account information"""
+    conn = get_db_connection()
+    cur = None
+    try:
+        data = request.get_json()
+        cur = conn.cursor(dictionary=True)
+
+        # Check if user exists
+        cur.execute("SELECT * FROM `user` WHERE user_id = %s", (user_id,))
+        user = cur.fetchone()
+        
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        # Update user table
+        update_fields = []
+        update_values = []
+        
+        if "username" in data:
+            update_fields.append("username = %s")
+            update_values.append(data["username"])
+        
+        if "email" in data:
+            update_fields.append("email = %s")
+            update_values.append(data["email"])
+        
+        if "first_name" in data:
+            update_fields.append("first_name = %s")
+            update_values.append(data["first_name"])
+        
+        if "last_name" in data:
+            update_fields.append("last_name = %s")
+            update_values.append(data["last_name"])
+        
+        if "type_id" in data:
+            update_fields.append("type_id = %s")
+            update_values.append(data["type_id"])
+
+        if update_fields:
+            update_values.append(user_id)
+            query = f"UPDATE `user` SET {', '.join(update_fields)} WHERE user_id = %s"
+            cur.execute(query, update_values)
+
+        # Update role-specific data
+        if "role_data" in data:
+            role_data = data["role_data"]
+            type_id = data.get("type_id", user.get("type_id"))
+
+            # Admin
+            if type_id == 1:
+                cur.execute("SELECT admin_id FROM admin WHERE user_id = %s", (user_id,))
+                admin = cur.fetchone()
+                if admin and "admin_permissions" in role_data:
+                    cur.execute("""
+                        UPDATE admin 
+                        SET admin_permissions = %s 
+                        WHERE user_id = %s
+                    """, (role_data["admin_permissions"], user_id))
+
+            # Sponsor
+            elif type_id == 2:
+                cur.execute("SELECT sponsor_id FROM sponsor WHERE user_id = %s", (user_id,))
+                sponsor = cur.fetchone()
+                if sponsor:
+                    sponsor_updates = []
+                    sponsor_values = []
+                    
+                    if "name" in role_data:
+                        sponsor_updates.append("name = %s")
+                        sponsor_values.append(role_data["name"])
+                    
+                    if "description" in role_data:
+                        sponsor_updates.append("description = %s")
+                        sponsor_values.append(role_data["description"])
+                    
+                    if sponsor_updates:
+                        sponsor_values.append(user_id)
+                        query = f"UPDATE sponsor SET {', '.join(sponsor_updates)} WHERE user_id = %s"
+                        cur.execute(query, sponsor_values)
+
+        conn.commit()
+        return jsonify({"message": "Account updated successfully"}), 200
+
+    except Exception as e:
+        conn.rollback()
+        print("Error in update_account:", e)
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
+
+# Reset user password
+@account_bp.route("/api/admin/account/<int:user_id>/reset-password", methods=["POST"])
+@token_required
+@require_role("admin")
+def reset_user_password(user_id):
+    """Reset a user's password to a random generated password"""
+    import secrets
+    import string
+    from werkzeug.security import generate_password_hash
+    
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # Check if user exists
+        cur.execute("SELECT * FROM `user` WHERE user_id = %s", (user_id,))
+        user = cur.fetchone()
+        
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        # Generate random password
+        alphabet = string.ascii_letters + string.digits
+        new_password = ''.join(secrets.choice(alphabet) for i in range(12))
+        
+        # Hash the password
+        hashed_password = generate_password_hash(new_password)
+        
+        # Update user password
+        cur.execute("""
+            UPDATE `user` 
+            SET password = %s 
+            WHERE user_id = %s
+        """, (hashed_password, user_id))
+        
+        conn.commit()
+        
+        return jsonify({
+            "message": "Password reset successfully",
+            "new_password": new_password
+        }), 200
+
+    except Exception as e:
+        conn.rollback()
+        print("Error in reset_user_password:", e)
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cur:
+            cur.close()
+        conn.close()

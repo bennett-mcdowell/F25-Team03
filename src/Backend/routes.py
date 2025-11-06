@@ -78,6 +78,13 @@ def driver_home():
 def cart_page():
     return render_template('cart.html')
 
+@routes_bp.route('/account/<int:user_id>')
+@token_required
+@require_role("admin")
+def account_details(user_id):
+    """serve the account detail page for a specific user"""
+    return render_template('account_details.html')
+
 # @routes_bp.route('/api/register', methods=['POST'])
 # def register_api():
 #     return jsonify({'message': 'User registered successfully'}), 201
