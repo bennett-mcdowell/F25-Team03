@@ -55,9 +55,8 @@ document.addEventListener('DOMContentLoaded', function () {
             const country = document.getElementById('country').value.trim();
             const username = document.getElementById('username').value.trim();
             const password = document.getElementById('password').value.trim();
-            const sponsor = document.getElementById('sponsor').value.trim();
 
-            if (!firstname || !lastname || !email || !ssn || !city || !state || !country || !username || !password || !sponsor) {
+            if (!firstname || !lastname || !email || !ssn || !city || !state || !country || !username || !password) {
                 errorDiv.textContent = 'Please fill out all fields.';
                 errorDiv.style.display = 'block';
                 if (successDiv) successDiv.style.display = 'none';
@@ -84,8 +83,7 @@ document.addEventListener('DOMContentLoaded', function () {
                         state,
                         country,
                         username,
-                        password,
-                        sponsor
+                        password
                     })
                 });
                 const data = await response.json();

@@ -74,15 +74,13 @@ def register():
     country    = data.get('country')
     username   = data.get('username') or email
     password   = data.get('password')
-    sponsor_code = (data.get('sponsor') or "").strip()   # REQUIRED for drivers now
-    # login_info (schema requires NOT NULL)
     sec_q = data.get('security_question') or 'Default question'
     sec_a = data.get('security_answer')  or 'Default answer'
 
     # Validate basics
-    required = [first_name, last_name, email, city, state, country, username, password, sponsor_code]
+    required = [first_name, last_name, email, city, state, country, username, password]
     if not all(required):
-        return jsonify({'error': 'Missing required fields (including sponsor_code).'}), 400
+        return jsonify({'error': 'Missing required fields.'}), 400
 
     # Force driver type (3). We no longer register admins/sponsors from this endpoint.
     type_id = 3
@@ -95,34 +93,6 @@ def register():
         cur = conn.cursor()
 
         _ = _log_db_identity(cur)
-
-        # ---- Sponsor code lookup (required) ---------------------------------
-        # Accept numeric sponsor_id OR case-insensitive sponsor name as the code.
-        sponsor_id_val = None
-        try:
-            code_id = int(sponsor_code)
-        except (TypeError, ValueError):
-            code_id = None
-
-        if code_id is not None:
-            _exec(cur, "SELECT sponsor_id FROM sponsor WHERE sponsor_id=%s LIMIT 1",
-                  (code_id,), label="lookup sponsor by id")
-        else:
-            _exec(cur, "SELECT sponsor_id FROM sponsor WHERE LOWER(name)=LOWER(%s) LIMIT 1",
-                  (sponsor_code,), label="lookup sponsor by name")
-
-        row = cur.fetchone()
-        if not row:
-            logger.info(f"Invalid sponsor_code supplied: {sponsor_code!r}")
-            conn.rollback()
-            return jsonify({
-                'error': 'Invalid sponsor code.',
-                'error_code': 'INVALID_SPONSOR_CODE'
-            }), 422
-
-        sponsor_id_val = row[0]
-        logger.info(f"Sponsor code accepted -> sponsor_id={sponsor_id_val}")
-        # ---------------------------------------------------------------------
 
         # 1) user
         _exec(cur,
@@ -152,13 +122,6 @@ def register():
               "INSERT INTO driver (user_id) VALUES (%s)",
               (user_id,),
               label="insert driver")
-        
-        driver_id = cur.lastrowid
-        # 5) driver_sponsor relationship
-        _exec(cur,
-                "INSERT INTO driver_sponsor (driver_id, sponsor_id, balance, status, since_at) VALUES (%s, %s, %s, 'ACTIVE', NOW())",
-                (driver_id, sponsor_id_val, 0.00),
-                label="insert driver_sponsor")
 
         conn.commit()
         logger.info("Transaction committed (register)")

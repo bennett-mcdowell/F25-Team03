@@ -1,26 +1,29 @@
 // Global state
 let userBalance = 0;
 let hiddenProducts = new Set();
+let currentSponsorId = null;
+let userSponsors = [];
 
-// Load balance, hidden products, and categories on page load
+// Load everything on page load
 document.addEventListener('DOMContentLoaded', () => {
-    loadUserBalance();
-    loadHiddenProducts();
+    loadUserSponsors();
     buildCategoryFilters();
     setupFilterListeners();
+    setupSponsorChangeListener();
 });
 
-// Load user's point balance
-async function loadUserBalance() {
+// Load user's sponsors and select first one
+async function loadUserSponsors() {
     const token = localStorage.getItem('jwt');
     if (!token) {
-        console.log('No token, showing demo balance');
-        document.getElementById('user-balance').textContent = '50,000 (Demo)';
+        console.log('No token, hiding sponsor selector');
+        document.getElementById('sponsor-selector-container').style.display = 'none';
+        document.getElementById('user-balance').textContent = '0';
         return;
     }
 
     try {
-        const response = await fetch('/api/account', {
+        const response = await fetch('/api/driver/sponsors', {
             headers: {
                 'Authorization': `Bearer ${token}`
             }
@@ -28,23 +31,65 @@ async function loadUserBalance() {
 
         if (response.ok) {
             const data = await response.json();
-            // Balance is in dollars, convert to points (*100)
-            const balance = data.role?.balance || 0;
-            userBalance = Math.floor(balance * 100);
-            document.getElementById('user-balance').textContent = userBalance.toLocaleString();
+            userSponsors = data.sponsors || [];
+            
+            if (userSponsors.length === 0) {
+                document.getElementById('sponsor-select').innerHTML = '<option value="">No sponsors available</option>';
+                document.getElementById('user-balance').textContent = '0';
+                return;
+            }
+
+            // Populate sponsor dropdown
+            const select = document.getElementById('sponsor-select');
+            select.innerHTML = userSponsors.map(sponsor => 
+                `<option value="${sponsor.sponsor_id}">${sponsor.sponsor_name} (${Math.floor(sponsor.balance * 100).toLocaleString()} pts)</option>`
+            ).join('');
+
+            // Select first sponsor by default
+            currentSponsorId = userSponsors[0].sponsor_id;
+            select.value = currentSponsorId;
+            
+            // Load balance and hidden products for this sponsor
+            updateBalanceDisplay();
+            loadHiddenProducts();
         } else {
-            console.log('Not logged in, showing demo balance');
-            document.getElementById('user-balance').textContent = '50,000 (Demo)';
-            userBalance = 50000;
+            console.error('Failed to load sponsors');
+            document.getElementById('sponsor-selector-container').style.display = 'none';
         }
     } catch (error) {
-        console.error('Error loading balance:', error);
-        document.getElementById('user-balance').textContent = '50,000 (Demo)';
-        userBalance = 50000;
+        console.error('Error loading sponsors:', error);
+        document.getElementById('sponsor-selector-container').style.display = 'none';
     }
 }
 
-// Load hidden products for current driver
+// Update balance display based on selected sponsor
+function updateBalanceDisplay() {
+    if (!currentSponsorId) {
+        document.getElementById('user-balance').textContent = '0';
+        return;
+    }
+
+    const sponsor = userSponsors.find(s => s.sponsor_id === currentSponsorId);
+    if (sponsor) {
+        userBalance = Math.floor(sponsor.balance * 100);
+        document.getElementById('user-balance').textContent = userBalance.toLocaleString();
+    }
+}
+
+// Handle sponsor selection change
+function setupSponsorChangeListener() {
+    const select = document.getElementById('sponsor-select');
+    select.addEventListener('change', (e) => {
+        currentSponsorId = parseInt(e.target.value);
+        updateBalanceDisplay();
+        loadHiddenProducts();
+        
+        // Save to localStorage for cart page
+        localStorage.setItem('currentSponsorId', currentSponsorId);
+    });
+}
+
+// Load hidden products for current driver (across all sponsors per Option A)
 async function loadHiddenProducts() {
     const token = localStorage.getItem('jwt');
     if (!token) {
@@ -77,6 +122,8 @@ function applyHiddenProducts() {
         const productId = parseInt(product.dataset.productId);
         if (hiddenProducts.has(productId)) {
             product.classList.add('hidden');
+        } else {
+            product.classList.remove('hidden');
         }
     });
     
@@ -84,27 +131,15 @@ function applyHiddenProducts() {
     updateProductCount();
 }
 
-// Hide a product
+// Hide a product (from ALL sponsors per Option A)
 async function hideProduct(productId) {
     const token = localStorage.getItem('jwt');
     
-    // Demo mode - just hide locally
     if (!token) {
-        hiddenProducts.add(productId);
-        const productEl = document.querySelector(`[data-product-id="${productId}"]`);
-        if (productEl) {
-            productEl.classList.add('being-hidden');
-            setTimeout(() => {
-                productEl.classList.add('hidden');
-                productEl.classList.remove('being-hidden');
-                updateProductCount();
-            }, 300);
-        }
-        alert('Product hidden (demo mode - not saved to database)');
+        alert('Please log in to hide products');
         return;
     }
 
-    // Real mode - save to database
     const productEl = document.querySelector(`[data-product-id="${productId}"]`);
     if (productEl) {
         productEl.classList.add('being-hidden');
@@ -124,6 +159,7 @@ async function hideProduct(productId) {
         });
 
         if (response.ok) {
+            const data = await response.json();
             hiddenProducts.add(productId);
             setTimeout(() => {
                 if (productEl) {
@@ -132,6 +168,8 @@ async function hideProduct(productId) {
                 }
                 updateProductCount();
             }, 300);
+            
+            console.log(`Product hidden from ${data.applied_to_sponsors} sponsors`);
         } else {
             if (productEl) {
                 productEl.classList.remove('being-hidden');
@@ -237,24 +275,32 @@ document.addEventListener('click', (e) => {
     if (e.target.classList.contains('hide-product-btn')) {
         e.stopPropagation();
         const productId = parseInt(e.target.dataset.productId);
-        if (confirm('Hide this product from your catalog?')) {
+        if (confirm('Hide this product from your catalog? (This will hide it from all your sponsors)')) {
             hideProduct(productId);
         }
     }
     
     // Add to cart button
     if (e.target.classList.contains('add-to-cart-btn')) {
+        if (!currentSponsorId) {
+            alert('Please select a sponsor first');
+            return;
+        }
+        
         const btn = e.target;
         const product = {
             id: parseInt(btn.dataset.id),
             title: btn.dataset.title,
             price: parseInt(btn.dataset.price),
             image: btn.dataset.image,
-            quantity: 1
+            quantity: 1,
+            sponsor_id: currentSponsorId  // Add sponsor_id to cart item
         };
         
         let cart = JSON.parse(localStorage.getItem('cart') || '[]');
-        const existing = cart.find(item => item.id === product.id);
+        
+        // Check if product already in cart with same sponsor
+        const existing = cart.find(item => item.id === product.id && item.sponsor_id === currentSponsorId);
         
         if (existing) {
             existing.quantity++;
@@ -267,5 +313,6 @@ document.addEventListener('click', (e) => {
     }
 });
 
-// Expose loadUserBalance globally so cart can refresh it
-window.loadUserBalance = loadUserBalance;
+// Expose functions globally
+window.loadUserBalance = updateBalanceDisplay;
+window.getCurrentSponsorId = () => currentSponsorId;

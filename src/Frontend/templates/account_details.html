@@ -1,0 +1,133 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Account Details</title>
+  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+  <div class="responsive-wrapper">
+    <div class="app">
+      <div class="app-header">
+        <div class="logo">
+          <div class="logo-icon">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M20 21v-2a4 4 0 0 0-4-4H8a4 4 0 0 0-4 4v2"></path>
+              <circle cx="12" cy="7" r="4"></circle>
+            </svg>
+          </div>
+          <div class="logo-title">
+            <span>Account Details</span>
+            <span>Admin Panel</span>
+          </div>
+        </div>
+        <div class="app-header-actions">
+          <a href="/admin/home" class="flat-button">← Back to Accounts</a>
+        </div>
+      </div>
+
+      <div class="app-body">
+        <div id="alert" class="alert" style="display: none;"></div>
+        <div id="loading" class="loading">Loading account details...</div>
+
+        <div id="content" style="display: none; width: 100%;">
+          <!-- User Information Section -->
+          <div class="service-section">
+            <h2>User Information</h2>
+            <div class="tiles">
+              <div class="form-group">
+                <label for="user_id">User ID</label>
+                <input type="text" id="user_id" readonly disabled>
+              </div>
+              <div class="form-group">
+                <label for="username">Username</label>
+                <input type="text" id="username">
+              </div>
+              <div class="form-group">
+                <label for="email">Email</label>
+                <input type="email" id="email">
+              </div>
+            </div>
+            <div class="tiles" style="margin-top: 1rem;">
+              <div class="form-group">
+                <label for="first_name">First Name</label>
+                <input type="text" id="first_name">
+              </div>
+              <div class="form-group">
+                <label for="last_name">Last Name</label>
+                <input type="text" id="last_name">
+              </div>
+              <div class="form-group">
+                <label for="type_id">User Type</label>
+                <select id="type_id">
+                  <option value="1">Admin</option>
+                  <option value="2">Sponsor</option>
+                  <option value="3">Driver</option>
+                </select>
+              </div>
+            </div>
+          </div>
+
+          <!-- Role-Specific Section -->
+          <div id="role-section" class="transfer-section" style="display: none;">
+            <div class="transfer-section-header">
+              <h2 id="role-title">Role Details</h2>
+            </div>
+            
+            <!-- Admin Section -->
+            <div id="admin-section" style="display: none; margin-top: 1.5rem;">
+              <div class="form-group">
+                <label for="admin_permissions">Admin Permissions</label>
+                <textarea id="admin_permissions" rows="4"></textarea>
+              </div>
+            </div>
+
+            <!-- Sponsor Section -->
+            <div id="sponsor-section" style="display: none; margin-top: 1.5rem;">
+              <div class="tiles">
+                <div class="form-group">
+                  <label for="sponsor_name">Sponsor Name</label>
+                  <input type="text" id="sponsor_name">
+                </div>
+                <div class="form-group" style="grid-column: span 2;">
+                  <label for="sponsor_description">Description</label>
+                  <textarea id="sponsor_description" rows="4"></textarea>
+                </div>
+              </div>
+            </div>
+
+            <!-- Driver Section -->
+            <div id="driver-section" style="display: none; margin-top: 1.5rem;">
+              <h3 style="color: var(--c-text-secondary); margin-bottom: 1rem;">Sponsor Associations</h3>
+              <div class="transfers">
+                <table style="width: 100%; border-collapse: collapse;">
+                  <thead>
+                    <tr style="border-bottom: 1px solid var(--c-gray-600);">
+                      <th style="padding: 1rem; text-align: left; color: var(--c-text-secondary);">Sponsor Name</th>
+                      <th style="padding: 1rem; text-align: left; color: var(--c-text-secondary);">Balance</th>
+                      <th style="padding: 1rem; text-align: left; color: var(--c-text-secondary);">Status</th>
+                      <th style="padding: 1rem; text-align: left; color: var(--c-text-secondary);">Since</th>
+                      <th style="padding: 1rem; text-align: left; color: var(--c-text-secondary);">Until</th>
+                    </tr>
+                  </thead>
+                  <tbody id="sponsors-tbody"></tbody>
+                </table>
+              </div>
+              <div id="total-balance" style="font-size: 1.25rem; font-weight: 600; color: var(--c-green-500); margin-top: 1rem;"></div>
+            </div>
+          </div>
+
+          <!-- Action Buttons -->
+          <div class="payment-section-footer" style="margin-top: 2rem;">
+            <button class="flat-button" onclick="saveChanges()" style="margin-right: 1rem;">Save Changes</button>
+            <button class="flat-button" onclick="resetPassword()">Reset Password</button>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+
+  <script src="{{ url_for('static', filename='js/account_detail.js') }}"></script>
+</body>
+</html>

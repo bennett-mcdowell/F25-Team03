@@ -34,7 +34,7 @@ def account_api():
     conn = get_db_connection()
     cur = None
     try:
-        cur = conn.cursor(dictionary=True)  # <-- no context manager; will close manually
+        cur = conn.cursor(dictionary=True)
 
         # 1) Base user
         cur.execute("SELECT * FROM `user` WHERE user_id = %s", (user_id,))
@@ -360,16 +360,26 @@ def sponsor_bulk_drivers():
                         VALUES (%s, 0, 0, NULL, %s, %s)
                     """, (driver_user_id, "Default question", "Default answer"))
 
-                # Ensure driver record points to this sponsor
-                cur.execute("SELECT driver_id, sponsor_id FROM driver WHERE user_id=%s", (driver_user_id,))
+                # Ensure driver record exists
+                cur.execute("SELECT driver_id FROM driver WHERE user_id=%s", (driver_user_id,))
                 drow = cur.fetchone()
-                if drow:
-                    if drow["sponsor_id"] != sponsor_id:
-                        cur.execute("UPDATE driver SET sponsor_id=%s WHERE driver_id=%s", (sponsor_id, drow["driver_id"]))
+                if not drow:
+                    cur.execute("INSERT INTO driver (user_id) VALUES (%s)", (driver_user_id,))
+                    driver_id = cur.lastrowid
                 else:
+                    driver_id = drow["driver_id"]
+
+                # Link to sponsor via driver_sponsor if not already linked
+                cur.execute("""
+                    SELECT driver_sponsor_id FROM driver_sponsor 
+                    WHERE driver_id = %s AND sponsor_id = %s
+                """, (driver_id, sponsor_id))
+                
+                if not cur.fetchone():
                     cur.execute("""
-                        INSERT INTO driver (user_id, balance, sponsor_id) VALUES (%s, %s, %s)
-                    """, (driver_user_id, 0.00, sponsor_id))
+                        INSERT INTO driver_sponsor (driver_id, sponsor_id, balance, status, since_at)
+                        VALUES (%s, %s, 0.00, 'ACTIVE', NOW())
+                    """, (driver_id, sponsor_id))
 
                 conn.commit()
                 success += 1
@@ -416,12 +426,16 @@ def purchase_api():
     except Exception:
         return jsonify({"error": "Invalid user ID"}), 401
     
-    # Get cart items from request
+    # Get cart items and sponsor_id from request
     data = request.get_json() or {}
     cart_items = data.get('items', [])
+    sponsor_id = data.get('sponsor_id')
     
     if not cart_items:
         return jsonify({"error": "Cart is empty"}), 400
+    
+    if not sponsor_id:
+        return jsonify({"error": "sponsor_id required"}), 400
     
     conn = None
     cur = None
@@ -432,28 +446,37 @@ def purchase_api():
         
         # 1. Verify user is a driver
         cur.execute("""
-            SELECT u.type_id, d.driver_id, d.balance, d.sponsor_id 
-            FROM `user` u
-            LEFT JOIN driver d ON u.user_id = d.user_id
-            WHERE u.user_id = %s
+            SELECT d.driver_id
+            FROM driver d
+            JOIN `user` u ON d.user_id = u.user_id
+            WHERE u.user_id = %s AND u.type_id = 3
         """, (user_id,))
-        user_data = cur.fetchone()
+        driver_data = cur.fetchone()
         
-        if not user_data or user_data['type_id'] != 3:
+        if not driver_data:
             return jsonify({"error": "Only drivers can make purchases"}), 403
         
-        if not user_data['driver_id']:
-            return jsonify({"error": "Driver record not found"}), 404
+        driver_id = driver_data['driver_id']
         
-        current_balance = float(user_data['balance'])
-        driver_id = user_data['driver_id']
-        sponsor_id = user_data['sponsor_id']
+        # 2. Get driver-sponsor relationship and balance
+        cur.execute("""
+            SELECT driver_sponsor_id, balance
+            FROM driver_sponsor
+            WHERE driver_id = %s AND sponsor_id = %s AND status = 'ACTIVE'
+        """, (driver_id, sponsor_id))
         
-        # 2. Calculate total cost (items are already in points)
+        ds_row = cur.fetchone()
+        if not ds_row:
+            return jsonify({"error": "No active relationship with this sponsor"}), 403
+        
+        driver_sponsor_id = ds_row['driver_sponsor_id']
+        current_balance = float(ds_row['balance'])
+        
+        # 3. Calculate total cost (items are already in points)
         total_points = sum(item.get('price', 0) * item.get('quantity', 1) for item in cart_items)
         total_dollars = total_points / 100.0  # Convert points back to dollars for DB
         
-        # 3. Check if driver has enough balance
+        # 4. Check if driver has enough balance
         if current_balance < total_dollars:
             return jsonify({
                 "error": "Insufficient balance",
@@ -462,32 +485,32 @@ def purchase_api():
                 "shortfall": int((total_dollars - current_balance) * 100)
             }), 400
         
-        # 4. Deduct from driver balance
+        # 5. Deduct from driver_sponsor balance
         new_balance = current_balance - total_dollars
         cur.execute("""
-            UPDATE driver 
+            UPDATE driver_sponsor 
             SET balance = %s 
-            WHERE driver_id = %s
-        """, (new_balance, driver_id))
+            WHERE driver_sponsor_id = %s
+        """, (new_balance, driver_sponsor_id))
         
-        # 5. Create transaction records for each item
+        # 6. Create transaction records for each item
         transaction_time = datetime.datetime.now()
         for item in cart_items:
             item_price_dollars = (item.get('price', 0) * item.get('quantity', 1)) / 100.0
             cur.execute("""
-                INSERT INTO transactions (`date`, user_id, amount, item_id)
-                VALUES (%s, %s, %s, %s)
+                INSERT INTO transactions (`date`, user_id, amount, item_id, driver_sponsor_id)
+                VALUES (%s, %s, %s, %s, %s)
             """, (
                 transaction_time,
                 user_id,
                 -item_price_dollars,  # Negative for purchases
-                item.get('id', None)  # Product ID from Fake Store API
+                item.get('id', None),  # Product ID from Fake Store API
+                driver_sponsor_id  # Attribution to specific sponsor
             ))
         
-        # 6. Calculate 1% commission for sponsor (if sponsor exists)
-        if sponsor_id:
-            commission = total_dollars * 0.01
-            print(f"Commission of ${commission:.2f} for sponsor_id {sponsor_id}")
+        # 7. Calculate 1% commission for sponsor
+        commission = total_dollars * 0.01
+        print(f"Commission of ${commission:.2f} for sponsor_id {sponsor_id}")
         
         conn.commit()
         
@@ -497,7 +520,8 @@ def purchase_api():
             "items_purchased": len(cart_items),
             "total_spent": total_points,
             "new_balance": int(new_balance * 100),
-            "previous_balance": int(current_balance * 100)
+            "previous_balance": int(current_balance * 100),
+            "sponsor_id": sponsor_id
         }), 200
         
     except Exception as e:
@@ -513,7 +537,6 @@ def purchase_api():
             cur.close()
         if conn:
             conn.close()
-        conn.close()
 
 # Sponsor Accounts API
 @account_bp.route("/api/sponsor/accounts", methods=["GET"])
@@ -553,17 +576,18 @@ def sponsor_accounts_api():
             ds.balance,
             ds.status,
             ds.since_at,
-            ds.until_at
+            ds.until_at,
+            CASE WHEN ds.status = 'ACTIVE' THEN 1 ELSE 0 END as active
             FROM driver_sponsor ds
             JOIN driver d ON ds.driver_id = d.driver_id
             JOIN `user` u ON d.user_id = u.user_id
-            WHERE ds.sponsor_id = %s
+            WHERE ds.sponsor_id = %s AND ds.status = 'ACTIVE'
             ORDER BY u.last_name, u.first_name
         """, (sponsor_id,))
         drivers = cur.fetchall() or []
 
         # Count active drivers
-        active_drivers = sum(1 for d in drivers if d.get("active"))
+        active_drivers = len(drivers)
 
         return jsonify({
             "sponsor_id": sponsor_id,
@@ -600,7 +624,7 @@ def sponsor_add_points(driver_id):
     points = data.get("points")
 
     # Validate points
-    if not points or not isinstance(points, (int, float)) or points <= 0:
+    if not points or not isinstance(points, (int, float)):
         return jsonify({"error": "Invalid points value"}), 400
 
     conn = get_db_connection()
@@ -953,7 +977,7 @@ def driver_sponsors_api():
                 ds.balance
             FROM driver_sponsor ds
             JOIN sponsor s ON s.sponsor_id = ds.sponsor_id
-            WHERE ds.driver_id = %s
+            WHERE ds.driver_id = %s AND ds.status = 'ACTIVE'
             ORDER BY s.name
         """, (driver_id,))
         sponsors = cur.fetchall() or []
@@ -975,12 +999,194 @@ def driver_sponsors_api():
         if cur:
             cur.close()
         conn.close()
+
+@account_bp.route("/api/sponsors/available", methods=["GET"])
+@token_required
+@require_role("driver")
+def sponsors_available_api():
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        user_id = int(user_id)
+    except Exception:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute("SELECT driver_id FROM driver WHERE user_id = %s", (user_id,))
+        drow = cur.fetchone()
+        if not drow:
+            return jsonify({"error": "Driver not found"}), 404
+        driver_id = drow["driver_id"]
+
+        cur.execute(
+            """
+            SELECT 
+                s.sponsor_id,
+                s.name AS sponsor_name,
+                s.description,
+                CASE WHEN ds.driver_sponsor_id IS NULL THEN 0 ELSE 1 END AS has_relationship,
+                ds.status AS relationship_status
+            FROM sponsor s
+            LEFT JOIN driver_sponsor ds 
+                ON ds.sponsor_id = s.sponsor_id AND ds.driver_id = %s
+            ORDER BY s.name
+            """,
+            (driver_id,)
+        )
+        rows = cur.fetchall() or []
+
+        return jsonify({
+            "driver_id": driver_id,
+            "sponsors": rows
+        }), 200
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
+@account_bp.route("/api/driver/apply", methods=["POST"])
+@token_required
+@require_role("driver")
+def driver_apply_sponsor_api():
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    sponsor_id = data.get("sponsor_id")
+    if not sponsor_id:
+        return jsonify({"error": "Missing sponsor_id"}), 400
+
+    try:
+        user_id = int(user_id)
+        sponsor_id = int(sponsor_id)
+    except Exception:
+        return jsonify({"error": "Invalid ids"}), 400
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute("SELECT driver_id FROM driver WHERE user_id = %s", (user_id,))
+        drow = cur.fetchone()
+        if not drow:
+            return jsonify({"error": "Driver not found"}), 404
+        driver_id = drow["driver_id"]
+
+        cur.execute("SELECT sponsor_id FROM sponsor WHERE sponsor_id=%s", (sponsor_id,))
+        if not cur.fetchone():
+            return jsonify({"error": "Sponsor not found"}), 404
+
+        cur.execute(
+            """
+            SELECT driver_sponsor_id, status 
+            FROM driver_sponsor 
+            WHERE driver_id=%s AND sponsor_id=%s
+            """,
+            (driver_id, sponsor_id)
+        )
+        existing = cur.fetchone()
+        if existing:
+            status = (existing.get("status") or "").upper()
+            if status in ("ACTIVE", "PENDING"):
+                return jsonify({"ok": True, "message": f"Already {status.lower()} with this sponsor."}), 200
+            cur.execute(
+                "UPDATE driver_sponsor SET status='PENDING' WHERE driver_sponsor_id=%s",
+                (existing["driver_sponsor_id"],)
+            )
+            conn.commit()
+            return jsonify({"ok": True, "message": "Application submitted (updated to pending)."}), 200
+
+        cur.execute(
+            """
+            INSERT INTO driver_sponsor (driver_id, sponsor_id, balance, status, since_at)
+            VALUES (%s, %s, %s, 'PENDING', NOW())
+            """,
+            (driver_id, sponsor_id, 0.00)
+        )
+        conn.commit()
+        return jsonify({"ok": True, "message": "Application submitted."}), 201
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
+@account_bp.route("/api/sponsor/remove-driver", methods=["POST"])
+@token_required
+@require_role("sponsor")
+def sponsor_remove_driver_api():
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    driver_id = data.get("driver_id")
+    if not driver_id:
+        return jsonify({"error": "Missing driver_id"}), 400
+
+    try:
+        user_id = int(user_id)
+        driver_id = int(driver_id)
+    except Exception:
+        return jsonify({"error": "Invalid ids"}), 400
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute("SELECT sponsor_id FROM sponsor WHERE user_id = %s", (user_id,))
+        srow = cur.fetchone()
+        if not srow:
+            return jsonify({"error": "Sponsor not found"}), 404
+        sponsor_id = srow["sponsor_id"]
+
+        cur.execute(
+            """
+            SELECT driver_sponsor_id, status 
+            FROM driver_sponsor 
+            WHERE driver_id=%s AND sponsor_id=%s
+            """,
+            (driver_id, sponsor_id)
+        )
+        rel = cur.fetchone()
+        if not rel:
+            return jsonify({"error": "No relationship found"}), 404
+
+        cur.execute(
+            "UPDATE driver_sponsor SET status='INACTIVE' WHERE driver_sponsor_id=%s",
+            (rel["driver_sponsor_id"],)
+        )
+  
+        conn.commit()
+        return jsonify({"ok": True, "message": "Driver removed."}), 200
+
+    except Exception as e:
+        import traceback
+        traceback.print_exc()
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
         
 @account_bp.route('/api/driver/catalog/hidden', methods=['GET'])
 @token_required
 def get_hidden_products():
     """
-    Get list of product IDs that the current driver has hidden
+    Get list of product IDs that the current driver has hidden from ALL their sponsors
+    Returns a flat list of product_ids (since hiding is now sponsor-agnostic per Option A)
     """
     user_id = _claims_user_id()
     if not user_id:
@@ -1011,9 +1217,11 @@ def get_hidden_products():
         
         driver_id = d["driver_id"]
         
-        # Get all hidden product IDs
+        # Get all DISTINCT hidden product IDs across all sponsors
+        # Since we're doing Option A (hide from all sponsors at once),
+        # we just return unique product_ids
         cur.execute("""
-            SELECT product_id
+            SELECT DISTINCT product_id
             FROM driver_catalog_curation
             WHERE driver_id = %s AND is_hidden = 1
         """, (driver_id,))
@@ -1036,8 +1244,10 @@ def get_hidden_products():
 @token_required
 def toggle_product_visibility():
     """
-    Toggle product visibility for current driver
+    Toggle product visibility for current driver across ALL their sponsors (Option A)
     Body: { "product_id": 123, "is_hidden": true/false }
+    
+    This will hide/show the product for ALL sponsors the driver is associated with
     """
     user_id = _claims_user_id()
     if not user_id:
@@ -1076,27 +1286,43 @@ def toggle_product_visibility():
         
         driver_id = d["driver_id"]
         
-        # Upsert curation record
+        # Get all active sponsor relationships for this driver
         cur.execute("""
-            INSERT INTO driver_catalog_curation (driver_id, product_id, is_hidden, hidden_at)
-            VALUES (%s, %s, %s, NOW())
-            ON DUPLICATE KEY UPDATE 
-                is_hidden = VALUES(is_hidden),
-                hidden_at = IF(VALUES(is_hidden) = 1, NOW(), hidden_at)
-        """, (driver_id, product_id, 1 if is_hidden else 0))
+            SELECT sponsor_id
+            FROM driver_sponsor
+            WHERE driver_id = %s AND status = 'ACTIVE'
+        """, (driver_id,))
+        
+        sponsor_rows = cur.fetchall()
+        if not sponsor_rows:
+            return jsonify({"error": "Driver has no active sponsors"}), 403
+        
+        # Hide/show product for ALL sponsors
+        for row in sponsor_rows:
+            sponsor_id = row['sponsor_id']
+            cur.execute("""
+                INSERT INTO driver_catalog_curation (driver_id, sponsor_id, product_id, is_hidden, hidden_at)
+                VALUES (%s, %s, %s, %s, NOW())
+                ON DUPLICATE KEY UPDATE 
+                    is_hidden = VALUES(is_hidden),
+                    hidden_at = IF(VALUES(is_hidden) = 1, NOW(), hidden_at)
+            """, (driver_id, sponsor_id, product_id, 1 if is_hidden else 0))
         
         conn.commit()
         
         return jsonify({
             "success": True,
             "product_id": product_id,
-            "is_hidden": is_hidden
+            "is_hidden": is_hidden,
+            "applied_to_sponsors": len(sponsor_rows)
         }), 200
         
     except Exception as e:
         if conn:
             conn.rollback()
         print(f"Error toggling product visibility: {e}")
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
         
     finally:
@@ -1104,3 +1330,257 @@ def toggle_product_visibility():
             cur.close()
         if conn:
             conn.close()
+
+# Get individual account details
+@account_bp.route("/api/admin/account/<int:user_id>", methods=["GET"])
+@token_required
+@require_role("admin")
+def get_account_detail(user_id):
+    """Get detailed information about a specific user account"""
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # Get user data
+        cur.execute("SELECT * FROM `user` WHERE user_id = %s", (user_id,))
+        user = cur.fetchone()
+        
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        type_id = user.get("type_id")
+        
+        # Remove sensitive fields
+        user_data = {
+            k: v for k, v in user.items()
+            if k.lower() not in ["password", "created_at", "updated_at"]
+        }
+
+        # Get user type info
+        cur.execute("SELECT * FROM user_type WHERE type_id = %s", (type_id,))
+        trow = cur.fetchone()
+        type_info = dict(trow) if trow else None
+        role_name = type_info.get("type_name") if type_info else None
+
+        # Get role-specific details
+        role_blob = None
+
+        # Admin
+        if type_id == 1:
+            cur.execute("""
+                SELECT admin_id, user_id, admin_permissions
+                FROM admin
+                WHERE user_id = %s
+            """, (user_id,))
+            r = cur.fetchone()
+            if r:
+                role_blob = dict(r)
+
+        # Sponsor
+        elif type_id == 2:
+            cur.execute("""
+                SELECT sponsor_id, user_id, name, description
+                FROM sponsor
+                WHERE user_id = %s
+            """, (user_id,))
+            r = cur.fetchone()
+            if r:
+                role_blob = dict(r)
+
+        # Driver
+        elif type_id == 3:
+            cur.execute("SELECT driver_id FROM driver WHERE user_id = %s", (user_id,))
+            drow = cur.fetchone()
+            if drow:
+                driver_id = drow["driver_id"]
+                role_blob = {"driver_id": driver_id}
+
+                # Get sponsors for this driver
+                cur.execute("""
+                    SELECT
+                        ds.driver_sponsor_id,
+                        ds.balance,
+                        ds.status,
+                        ds.since_at,
+                        ds.until_at,
+                        s.sponsor_id,
+                        s.name,
+                        s.description
+                    FROM driver_sponsor ds
+                    JOIN sponsor s ON s.sponsor_id = ds.sponsor_id
+                    WHERE ds.driver_id = %s
+                    ORDER BY s.name
+                """, (driver_id,))
+                sponsors = cur.fetchall() or []
+                role_blob["sponsors"] = sponsors
+                role_blob["total_balance"] = float(sum((row.get("balance") or 0) for row in sponsors))
+
+        return jsonify({
+            "user": user_data,
+            "type": type_info,
+            "role_name": role_name,
+            "role": role_blob
+        }), 200
+
+    except Exception as e:
+        print("Error in /api/admin/account/<user_id>:", e)
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
+
+# Update account details
+@account_bp.route("/api/admin/account/<int:user_id>", methods=["PUT"])
+@token_required
+@require_role("admin")
+def update_account(user_id):
+    """Update user account information"""
+    conn = get_db_connection()
+    cur = None
+    try:
+        data = request.get_json()
+        cur = conn.cursor(dictionary=True)
+
+        # Check if user exists
+        cur.execute("SELECT * FROM `user` WHERE user_id = %s", (user_id,))
+        user = cur.fetchone()
+        
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        # Update user table
+        update_fields = []
+        update_values = []
+        
+        if "username" in data:
+            update_fields.append("username = %s")
+            update_values.append(data["username"])
+        
+        if "email" in data:
+            update_fields.append("email = %s")
+            update_values.append(data["email"])
+        
+        if "first_name" in data:
+            update_fields.append("first_name = %s")
+            update_values.append(data["first_name"])
+        
+        if "last_name" in data:
+            update_fields.append("last_name = %s")
+            update_values.append(data["last_name"])
+        
+        if "type_id" in data:
+            update_fields.append("type_id = %s")
+            update_values.append(data["type_id"])
+
+        if update_fields:
+            update_values.append(user_id)
+            query = f"UPDATE `user` SET {', '.join(update_fields)} WHERE user_id = %s"
+            cur.execute(query, update_values)
+
+        # Update role-specific data
+        if "role_data" in data:
+            role_data = data["role_data"]
+            type_id = data.get("type_id", user.get("type_id"))
+
+            # Admin
+            if type_id == 1:
+                cur.execute("SELECT admin_id FROM admin WHERE user_id = %s", (user_id,))
+                admin = cur.fetchone()
+                if admin and "admin_permissions" in role_data:
+                    cur.execute("""
+                        UPDATE admin 
+                        SET admin_permissions = %s 
+                        WHERE user_id = %s
+                    """, (role_data["admin_permissions"], user_id))
+
+            # Sponsor
+            elif type_id == 2:
+                cur.execute("SELECT sponsor_id FROM sponsor WHERE user_id = %s", (user_id,))
+                sponsor = cur.fetchone()
+                if sponsor:
+                    sponsor_updates = []
+                    sponsor_values = []
+                    
+                    if "name" in role_data:
+                        sponsor_updates.append("name = %s")
+                        sponsor_values.append(role_data["name"])
+                    
+                    if "description" in role_data:
+                        sponsor_updates.append("description = %s")
+                        sponsor_values.append(role_data["description"])
+                    
+                    if sponsor_updates:
+                        sponsor_values.append(user_id)
+                        query = f"UPDATE sponsor SET {', '.join(sponsor_updates)} WHERE user_id = %s"
+                        cur.execute(query, sponsor_values)
+
+        conn.commit()
+        return jsonify({"message": "Account updated successfully"}), 200
+
+    except Exception as e:
+        conn.rollback()
+        print("Error in update_account:", e)
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
+
+# Reset user password
+@account_bp.route("/api/admin/account/<int:user_id>/reset-password", methods=["POST"])
+@token_required
+@require_role("admin")
+def reset_user_password(user_id):
+    """Reset a user's password to a random generated password"""
+    import secrets
+    import string
+    from werkzeug.security import generate_password_hash
+    
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # Check if user exists
+        cur.execute("SELECT * FROM `user` WHERE user_id = %s", (user_id,))
+        user = cur.fetchone()
+        
+        if not user:
+            return jsonify({"error": "User not found"}), 404
+
+        # Generate random password
+        alphabet = string.ascii_letters + string.digits
+        new_password = ''.join(secrets.choice(alphabet) for i in range(12))
+        
+        # Hash the password
+        hashed_password = generate_password_hash(new_password)
+        
+        # Update user password
+        cur.execute("""
+            UPDATE user_credentials 
+            SET password = %s 
+            WHERE user_id = %s
+        """, (hashed_password, user_id))
+        
+        conn.commit()
+        
+        return jsonify({
+            "message": "Password reset successfully",
+            "new_password": new_password
+        }), 200
+
+    except Exception as e:
+        conn.rollback()
+        print("Error in reset_user_password:", e)
+        return jsonify({"error": str(e)}), 500
+
+    finally:
+        if cur:
+            cur.close()
+        conn.close()

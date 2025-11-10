@@ -51,12 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
               </div>
               <div>
                 <dt>Status</dt>
-                <dd>${driver.active ? "Active" : "Inactive"}</dd>
+                <dd id="driverStatus-${driver.driver_id}">${driver.active ? "Active" : "Inactive"}</dd>
               </div>
             </div>
             <div class="transfer-number">
               <input type="number" id="pointsInput-${driver.driver_id}" placeholder="Add points" min="1">
               <button class="flat-button add-points-btn" data-driver-id="${driver.driver_id}">Add Points</button>
+              <button class="flat-button remove-driver-btn" data-driver-id="${driver.driver_id}" style="background-color: #dc3545; margin-top: 8px;">Remove</button>
             </div>
           `;
 
@@ -71,7 +72,7 @@ document.addEventListener('DOMContentLoaded', () => {
           const input = document.getElementById(`pointsInput-${driverId}`);
           const points = parseInt(input.value);
 
-          if (!points || points <= 0) {
+          if (!points) {
             alert('Enter a valid number of points');
             return;
           }
@@ -94,6 +95,43 @@ document.addEventListener('DOMContentLoaded', () => {
           } catch (err) {
             console.error(err);
             alert('Error adding points');
+          }
+        });
+      });
+
+      // Remove driver button listeners
+      document.querySelectorAll('.remove-driver-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const driverId = btn.dataset.driverId;
+
+          if (!confirm('Are you sure you want to remove this driver? This will reject their sponsorship.')) {
+            return;
+          }
+
+          try {
+            const res = await fetch('/api/sponsor/remove-driver', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ driver_id: parseInt(driverId) })
+            });
+
+            const result = await res.json();
+            if (res.ok) {
+              document.getElementById(`driverStatus-${driverId}`).textContent = 'Inactive';
+              btn.disabled = true;
+              btn.textContent = 'Removed';
+              btn.style.backgroundColor = '#6c757d';
+              
+              const addPointsBtn = document.querySelector(`.add-points-btn[data-driver-id="${driverId}"]`);
+              if (addPointsBtn) {
+                addPointsBtn.disabled = true;
+              }
+            } else {
+              alert(result.error || 'Failed to remove driver');
+            }
+          } catch (err) {
+            console.error(err);
+            alert('Error removing driver');
           }
         });
       });
@@ -171,6 +209,9 @@ document.addEventListener('DOMContentLoaded', () => {
             <button class="flat-button approve-btn" data-driver-id="${p.driver_id}">
               Approve
             </button>
+            <button class="flat-button reject-btn" data-driver-id="${p.driver_id}" style="background-color: #dc3545; margin-top: 8px;">
+              Reject
+            </button>
           </div>
         `;
 
@@ -191,12 +232,42 @@ document.addEventListener('DOMContentLoaded', () => {
               approveBtn.disabled = true;
               approveBtn.textContent = "Approved";
               approveBtn.classList.add("disabled");
+              const rejectBtn = row.querySelector(".reject-btn");
+              if (rejectBtn) rejectBtn.disabled = true;
             } else {
               alert(result.error || "Failed to approve driver.");
             }
           } catch (err) {
             console.error("Error approving driver:", err);
             alert("Network or server error while approving driver.");
+          }
+        });
+
+        const rejectBtn = row.querySelector(".reject-btn");
+        rejectBtn.addEventListener("click", async () => {
+          const reason = prompt(`Reject ${driverName}?\n\nOptional: Enter reason for rejection:`);
+          if (reason === null) return;
+          
+          try {
+            const res = await fetch(`/api/sponsor/driver/${p.driver_id}/reject`, {
+              method: "POST",
+              headers: { "Content-Type": "application/json" },
+              body: JSON.stringify({ reason: reason || 'No reason provided' })
+            });
+
+            const result = await res.json();
+            if (res.ok) {
+              document.getElementById(`driverStatus-${p.driver_id}`).textContent = "Inactive";
+              rejectBtn.disabled = true;
+              rejectBtn.textContent = "Rejected";
+              rejectBtn.style.backgroundColor = "#6c757d";
+              approveBtn.disabled = true;
+            } else {
+              alert(result.error || "Failed to reject driver.");
+            }
+          } catch (err) {
+            console.error("Error rejecting driver:", err);
+            alert("Network or server error while rejecting driver.");
           }
         });
 
