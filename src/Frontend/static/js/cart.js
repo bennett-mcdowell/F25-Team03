@@ -83,29 +83,27 @@ const Cart = {
             const data = await res.json();
             
             if (res.ok) {
-                alert(`✅ Purchase Successful!\n\n` +
-                      `Items purchased: ${data.items_purchased}\n` +
-                      `Total spent: ${data.total_spent} points\n` +
-                      `Previous balance: ${data.previous_balance} points\n` +
-                      `New balance: ${data.new_balance} points`);
+                // Clear cart before redirecting
                 this.clear();
                 
-                // Reload balance on market page if it exists
-                if (window.loadUserBalance) {
-                    window.loadUserBalance();
-                }
+                // Build confirmation page URL with purchase details
+                const params = new URLSearchParams({
+                    items_purchased: data.items_purchased,
+                    total_spent: data.total_spent,
+                    new_balance: data.new_balance,
+                    sponsor_id: data.sponsor_id
+                });
                 
-                // Redirect to market after 2 seconds
-                setTimeout(() => {
-                    window.location.href = '/market';
-                }, 2000);
+                // Redirect to confirmation page
+                window.location.href = `/purchase-confirmation?${params.toString()}`;
             } else {
                 alert(`❌ Purchase Failed\n\n${data.error}`);
+                btn.disabled = false;
+                btn.textContent = 'Checkout';
             }
         } catch (error) {
             console.error('Purchase error:', error);
             alert('Purchase failed. Please try again.');
-        } finally {
             btn.disabled = false;
             btn.textContent = 'Checkout';
         }
