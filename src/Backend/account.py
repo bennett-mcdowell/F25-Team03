@@ -1331,9 +1331,6 @@ def toggle_product_visibility():
         if conn:
             conn.close()
 
-# Add these routes to your account blueprint
-
-# Get individual account details (with permission check)
 # Get individual account details (with permission check)
 @account_bp.route("/api/admin/account/<int:user_id>", methods=["GET"])
 @token_required
@@ -1341,13 +1338,22 @@ def get_account_detail(user_id):
     """Get detailed information about a specific user account"""
     from flask import g
     
+    # Use the existing helper pattern
+    claims = getattr(g, "decoded_token", {}) or {}
+    current_user_id = claims.get("user_id") or claims.get("sub")
+    
+    if not current_user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid user ID"}), 401
+    
     conn = get_db_connection()
     cur = None
     try:
         cur = conn.cursor(dictionary=True)
-        
-        # Permission check: Allow if admin OR if viewing own account
-        current_user_id = g.decoded_token.get("user_id")
         
         # Get current user's role
         cur.execute("""
@@ -1464,13 +1470,22 @@ def update_account(user_id):
     """Update user account information"""
     from flask import g
     
+    # Use the existing helper function
+    claims = getattr(g, "decoded_token", {}) or {}
+    current_user_id = claims.get("user_id") or claims.get("sub")
+    
+    if not current_user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+    
+    try:
+        current_user_id = int(current_user_id)
+    except (ValueError, TypeError):
+        return jsonify({"error": "Invalid user ID"}), 401
+    
     conn = get_db_connection()
     cur = None
     try:
         cur = conn.cursor(dictionary=True)
-        
-        # Permission check: Allow if admin OR if updating own account
-        current_user_id = g.user_id
         
         # Get current user's role
         cur.execute("""
@@ -1482,7 +1497,7 @@ def update_account(user_id):
         role_row = cur.fetchone()
         is_admin = role_row and role_row['type_name'] == 'Admin'
         
-        # Check permission
+        # Check permission: admin can edit anyone, users can only edit themselves
         if not is_admin and current_user_id != user_id:
             return jsonify({"error": "Permission denied"}), 403
 
@@ -1562,20 +1577,23 @@ def update_account(user_id):
         return jsonify({"message": "Account updated successfully"}), 200
 
     except Exception as e:
-        conn.rollback()
+        if conn:
+            conn.rollback()
         print("Error in update_account:", e)
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
     finally:
         if cur:
             cur.close()
-        conn.close()
+        if conn:
+            conn.close()
 
 
 # Reset user password
 @account_bp.route("/api/admin/account/<int:user_id>/reset-password", methods=["POST"])
 @token_required
-@require_role("admin")
 def reset_user_password(user_id):
     """Reset a user's password to a random generated password"""
     import secrets
