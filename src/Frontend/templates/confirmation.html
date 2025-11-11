@@ -1,0 +1,234 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Purchase Confirmation - Driver Incentive Program</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            padding: 20px;
+        }
+
+        .confirmation-container {
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0, 0, 0, 0.3);
+            max-width: 600px;
+            width: 100%;
+            padding: 40px;
+            animation: slideIn 0.5s ease-out;
+        }
+
+        @keyframes slideIn {
+            from {
+                opacity: 0;
+                transform: translateY(-30px);
+            }
+            to {
+                opacity: 1;
+                transform: translateY(0);
+            }
+        }
+
+        .success-icon {
+            text-align: center;
+            margin-bottom: 30px;
+        }
+
+        .success-icon svg {
+            width: 100px;
+            height: 100px;
+            stroke: #10b981;
+            stroke-width: 2;
+            fill: none;
+        }
+
+        .checkmark-circle {
+            stroke-dasharray: 166;
+            stroke-dashoffset: 166;
+            animation: checkmark-circle 0.6s ease-in-out forwards;
+        }
+
+        .checkmark-check {
+            stroke-dasharray: 48;
+            stroke-dashoffset: 48;
+            animation: checkmark-check 0.3s 0.3s ease-in-out forwards;
+        }
+
+        @keyframes checkmark-circle {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        @keyframes checkmark-check {
+            to {
+                stroke-dashoffset: 0;
+            }
+        }
+
+        h1 {
+            text-align: center;
+            color: #1f2937;
+            font-size: 32px;
+            margin-bottom: 10px;
+        }
+
+        .subtitle {
+            text-align: center;
+            color: #6b7280;
+            font-size: 16px;
+            margin-bottom: 30px;
+        }
+
+        .purchase-details {
+            background: #f9fafb;
+            border-radius: 12px;
+            padding: 25px;
+            margin-bottom: 25px;
+        }
+
+        .detail-row {
+            display: flex;
+            justify-content: space-between;
+            padding: 12px 0;
+            border-bottom: 1px solid #e5e7eb;
+        }
+
+        .detail-row:last-child {
+            border-bottom: none;
+        }
+
+        .detail-label {
+            color: #6b7280;
+            font-weight: 500;
+        }
+
+        .detail-value {
+            color: #1f2937;
+            font-weight: 600;
+        }
+
+        .items-purchased {
+            color: #667eea;
+            font-size: 18px;
+        }
+
+        .points-deducted {
+            color: #dc2626;
+            font-size: 18px;
+        }
+
+        .new-balance {
+            color: #10b981;
+            font-size: 20px;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 15px;
+            margin-top: 30px;
+        }
+
+        .btn {
+            flex: 1;
+            padding: 14px 24px;
+            border: none;
+            border-radius: 10px;
+            font-size: 16px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s ease;
+            text-decoration: none;
+            text-align: center;
+            display: inline-block;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px rgba(102, 126, 234, 0.4);
+        }
+
+        .btn-secondary {
+            background: white;
+            color: #667eea;
+            border: 2px solid #667eea;
+        }
+
+        .btn-secondary:hover {
+            background: #f3f4f6;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 600px) {
+            .confirmation-container {
+                padding: 30px 20px;
+            }
+
+            h1 {
+                font-size: 26px;
+            }
+
+            .action-buttons {
+                flex-direction: column;
+            }
+
+            .btn {
+                width: 100%;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="confirmation-container">
+        <div class="success-icon">
+            <svg viewBox="0 0 52 52">
+                <circle class="checkmark-circle" cx="26" cy="26" r="25"/>
+                <path class="checkmark-check" d="M14.1 27.2l7.1 7.2 16.7-16.8"/>
+            </svg>
+        </div>
+
+        <h1>Purchase Successful!</h1>
+        <p class="subtitle">Your order has been confirmed</p>
+
+        <div class="purchase-details">
+            <div class="detail-row">
+                <span class="detail-label">Items Purchased</span>
+                <span class="detail-value items-purchased">{{ items_purchased }} item{{ 's' if items_purchased != 1 else '' }}</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">Points Spent</span>
+                <span class="detail-value points-deducted">-{{ total_spent }} pts</span>
+            </div>
+
+            <div class="detail-row">
+                <span class="detail-label">New Balance</span>
+                <span class="detail-value new-balance">{{ new_balance }} pts</span>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <a href="/market" class="btn btn-primary">Continue Shopping</a>
+            <a href="/driver/home" class="btn btn-secondary">Go to Dashboard</a>
+        </div>
+    </div>
+</body>
+</html>

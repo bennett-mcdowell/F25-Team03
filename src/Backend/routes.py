@@ -1,5 +1,5 @@
 from lib2to3.pgen2.driver import Driver
-from flask import Blueprint, render_template, jsonify, redirect
+from flask import Blueprint, render_template, jsonify, redirect, request
 from utils.db import get_about_data
 import os
 import requests
@@ -150,6 +150,23 @@ def account_details(user_id):
 @routes_bp.route('/impersonate')
 def impersonate_page():
     return render_template('impersonate.html')
+
+@routes_bp.route('/purchase-confirmation')
+@token_required
+@require_role("driver")
+def purchase_confirmation():
+    """Display purchase confirmation page after successful checkout"""
+    # Get purchase details from query parameters
+    items_purchased = request.args.get('items_purchased', type=int)
+    total_spent = request.args.get('total_spent', type=int)
+    new_balance = request.args.get('new_balance', type=int)
+    sponsor_id = request.args.get('sponsor_id', type=int)
+    
+    return render_template('confirmation.html',
+                         items_purchased=items_purchased,
+                         total_spent=total_spent,
+                         new_balance=new_balance,
+                         sponsor_id=sponsor_id)
 
 # @routes_bp.route('/api/register', methods=['POST'])
 # def register_api():
