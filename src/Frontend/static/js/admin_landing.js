@@ -47,9 +47,47 @@ document.addEventListener("DOMContentLoaded", () => {
           <td>${user.username || user.email || "-"}</td>
           <td>${roleName}</td>
           <td>${sponsorCell}</td>
-          <td><a href="/account/${user.user_id}" class="flat-button">View</a></td>
+          <td>
+            <a href="/account/${user.user_id}" class="flat-button">View</a>
+            <button class="flat-button impersonate-btn" data-user-id="${user.user_id}" style="background-color: #ff9800; margin-left: 8px;">Impersonate</button>
+          </td>
         `;
         body.appendChild(row);
+      });
+
+      // Add impersonate button listeners
+      document.querySelectorAll('.impersonate-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const userId = btn.dataset.userId;
+          const userName = btn.closest('tr').querySelector('td:nth-child(2)').textContent;
+          
+          if (!confirm(`Impersonate user: ${userName}?\n\nThis will open a new tab where you'll be logged in as this user.`)) {
+            return;
+          }
+          
+          try {
+            // Get impersonation token
+            const res = await fetch('/api/admin/impersonate', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ user_id: parseInt(userId) })
+            });
+            
+            const result = await res.json();
+            if (!res.ok) {
+              alert(result.error || 'Failed to generate impersonation token');
+              return;
+            }
+            
+            // Open new tab with impersonation session
+            const impersonateUrl = `/impersonate?token=${encodeURIComponent(result.token)}&role=${result.user_info.role}`;
+            window.open(impersonateUrl, '_blank');
+            
+          } catch (err) {
+            console.error('Error impersonating user:', err);
+            alert('Error starting impersonation session');
+          }
+        });
       });
     })
     .catch(err => {

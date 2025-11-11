@@ -57,6 +57,7 @@ document.addEventListener('DOMContentLoaded', () => {
             <div class="transfer-number">
               <input type="number" id="pointsInput-${driver.driver_id}" placeholder="Add points" min="1">
               <button class="flat-button add-points-btn" data-driver-id="${driver.driver_id}">Add Points</button>
+              <button class="flat-button impersonate-driver-btn" data-driver-id="${driver.driver_id}" data-driver-name="${driverName}" style="background-color: #ff9800; margin-top: 8px;">Impersonate</button>
               <button class="flat-button remove-driver-btn" data-driver-id="${driver.driver_id}" style="background-color: #dc3545; margin-top: 8px;">Remove</button>
             </div>
           `;
@@ -132,6 +133,38 @@ document.addEventListener('DOMContentLoaded', () => {
           } catch (err) {
             console.error(err);
             alert('Error removing driver');
+          }
+        });
+      });
+
+      // Impersonate driver button listeners
+      document.querySelectorAll('.impersonate-driver-btn').forEach(btn => {
+        btn.addEventListener('click', async () => {
+          const driverId = btn.dataset.driverId;
+          const driverName = btn.dataset.driverName;
+
+          if (!confirm(`Impersonate driver: ${driverName}?\n\nThis will open a new tab where you'll be logged in as this driver.`)) {
+            return;
+          }
+
+          try {
+            const res = await fetch('/api/sponsor/impersonate-driver', {
+              method: 'POST',
+              headers: { 'Content-Type': 'application/json' },
+              body: JSON.stringify({ driver_id: parseInt(driverId) })
+            });
+
+            const result = await res.json();
+            if (res.ok) {
+              // Open new tab with impersonation session
+              const impersonateUrl = `/impersonate?token=${encodeURIComponent(result.token)}&role=${result.user_info.role}`;
+              window.open(impersonateUrl, '_blank');
+            } else {
+              alert(result.error || 'Failed to generate impersonation token');
+            }
+          } catch (err) {
+            console.error('Error impersonating driver:', err);
+            alert('Error starting impersonation session');
           }
         });
       });
