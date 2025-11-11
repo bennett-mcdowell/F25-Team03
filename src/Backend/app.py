@@ -59,7 +59,13 @@ configure_logging()  # <<— initialize logging before anything logs
 
 
 app = Flask(__name__, static_folder='../Frontend/static', template_folder='../Frontend/templates')
-CORS(app, supports_credentials=True)
+
+# CORS configuration for React frontend
+CORS(app, 
+     origins=['http://localhost:3000', 'http://127.0.0.1:3000'],
+     supports_credentials=True,
+     allow_headers=['Content-Type', 'Authorization'],
+     methods=['GET', 'POST', 'PUT', 'DELETE', 'OPTIONS'])
 
 # JWT configuration - use cookies for access tokens by default
 app.config['JWT_SECRET_KEY'] = os.getenv('JWT_SECRET', 'dev_secret')
@@ -67,8 +73,8 @@ app.config['JWT_TOKEN_LOCATION'] = ['cookies']
 # Consider enabling CSRF protection for cookie-authenticated forms in production
 app.config['JWT_COOKIE_CSRF_PROTECT'] = False
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 24 * 3600
-app.config['JWT_COOKIE_SAMESITE'] = 'Lax'
-app.config['JWT_COOKIE_SECURE'] = os.getenv('COOKIE_SECURE', 'false').lower() == 'true'
+app.config['JWT_COOKIE_SAMESITE'] = 'None'  # Changed from 'Lax' for cross-origin
+app.config['JWT_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
 
 jwt = JWTManager(app)
 
