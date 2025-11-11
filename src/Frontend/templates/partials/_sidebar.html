@@ -4,6 +4,7 @@
     <a href="/market" id="catalogBtn"><i class="ph-shopping-cart"></i> Catalog</a>
     <a href="/about" id="aboutBtn"><i class="ph-info"></i> About</a>
     <a href="/account" id="accountBtn"><i class="ph-user"></i> Account</a>
+    <a href="/sponsor/catalog" id="manageCatalogBtn" style="display: none;"><i class="ph-gear"></i> Manage Catalog</a>
     <a href="/login" id="logoutBtnSidebar"><i class="ph-sign-out"></i> Logout</a>
   </nav>
 </aside>
@@ -11,6 +12,7 @@
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
     const homeBtn = document.getElementById('homeBtn');
+    const manageCatalogBtn = document.getElementById('manageCatalogBtn');
     if (!homeBtn) return;
 
     try {
@@ -23,7 +25,11 @@ document.addEventListener('DOMContentLoaded', async () => {
         // Redirect Home button dynamically
         let homeUrl = '/home'; // default
         if (role === 'Admin') homeUrl = '/admin/home';
-        else if (role === 'Sponsor') homeUrl = '/sponsor/home';
+        else if (role === 'Sponsor') {
+            homeUrl = '/sponsor/home';
+            // Show "Manage Catalog" link for sponsors
+            if (manageCatalogBtn) manageCatalogBtn.style.display = 'block';
+        }
         else if (role === 'Driver') homeUrl = '/driver/home';
 
         homeBtn.setAttribute('href', homeUrl);
