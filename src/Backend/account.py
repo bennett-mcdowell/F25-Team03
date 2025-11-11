@@ -1331,16 +1331,37 @@ def toggle_product_visibility():
         if conn:
             conn.close()
 
-# Get individual account details
+# Add these routes to your account blueprint
+
+# Get individual account details (with permission check)
+# Get individual account details (with permission check)
 @account_bp.route("/api/admin/account/<int:user_id>", methods=["GET"])
 @token_required
-@require_role("admin")
 def get_account_detail(user_id):
     """Get detailed information about a specific user account"""
+    from flask import g
+    
     conn = get_db_connection()
     cur = None
     try:
         cur = conn.cursor(dictionary=True)
+        
+        # Permission check: Allow if admin OR if viewing own account
+        current_user_id = g.decoded_token.get("user_id")
+        
+        # Get current user's role
+        cur.execute("""
+            SELECT ut.type_name 
+            FROM user u 
+            JOIN user_type ut ON u.type_id = ut.type_id 
+            WHERE u.user_id = %s
+        """, (current_user_id,))
+        role_row = cur.fetchone()
+        is_admin = role_row and role_row['type_name'] == 'Admin'
+        
+        # Check permission
+        if not is_admin and current_user_id != user_id:
+            return jsonify({"error": "Permission denied"}), 403
 
         # Get user data
         cur.execute("SELECT * FROM `user` WHERE user_id = %s", (user_id,))
@@ -1420,11 +1441,14 @@ def get_account_detail(user_id):
             "user": user_data,
             "type": type_info,
             "role_name": role_name,
-            "role": role_blob
+            "role": role_blob,
+            "is_admin_view": is_admin and current_user_id != user_id
         }), 200
 
     except Exception as e:
         print("Error in /api/admin/account/<user_id>:", e)
+        import traceback
+        traceback.print_exc()
         return jsonify({"error": str(e)}), 500
 
     finally:
@@ -1433,17 +1457,36 @@ def get_account_detail(user_id):
         conn.close()
 
 
-# Update account details
+# Update account details (with permission check)
 @account_bp.route("/api/admin/account/<int:user_id>", methods=["PUT"])
 @token_required
-@require_role("admin")
 def update_account(user_id):
     """Update user account information"""
+    from flask import g
+    
     conn = get_db_connection()
     cur = None
     try:
-        data = request.get_json()
         cur = conn.cursor(dictionary=True)
+        
+        # Permission check: Allow if admin OR if updating own account
+        current_user_id = g.user_id
+        
+        # Get current user's role
+        cur.execute("""
+            SELECT ut.type_name 
+            FROM user u 
+            JOIN user_type ut ON u.type_id = ut.type_id 
+            WHERE u.user_id = %s
+        """, (current_user_id,))
+        role_row = cur.fetchone()
+        is_admin = role_row and role_row['type_name'] == 'Admin'
+        
+        # Check permission
+        if not is_admin and current_user_id != user_id:
+            return jsonify({"error": "Permission denied"}), 403
+
+        data = request.get_json()
 
         # Check if user exists
         cur.execute("SELECT * FROM `user` WHERE user_id = %s", (user_id,))
@@ -1455,10 +1498,6 @@ def update_account(user_id):
         # Update user table
         update_fields = []
         update_values = []
-        
-        if "username" in data:
-            update_fields.append("username = %s")
-            update_values.append(data["username"])
         
         if "email" in data:
             update_fields.append("email = %s")
@@ -1472,7 +1511,8 @@ def update_account(user_id):
             update_fields.append("last_name = %s")
             update_values.append(data["last_name"])
         
-        if "type_id" in data:
+        # Only admins can change type_id
+        if "type_id" in data and is_admin:
             update_fields.append("type_id = %s")
             update_values.append(data["type_id"])
 
@@ -1563,7 +1603,7 @@ def reset_user_password(user_id):
         
         # Update user password
         cur.execute("""
-            UPDATE user_credentials 
+            UPDATE `user` 
             SET password = %s 
             WHERE user_id = %s
         """, (hashed_password, user_id))

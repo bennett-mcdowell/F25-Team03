@@ -1,12 +1,60 @@
 let currentAccount = null;
-const userId = window.location.pathname.split('/').pop();
+let isAdminView = false;
+let currentUserRole = null;
+const pathSegments = window.location.pathname.split('/');
+const userId = pathSegments[pathSegments.length - 1];
 
 // Load account data on page load
-window.addEventListener('DOMContentLoaded', loadAccountData);
+window.addEventListener('DOMContentLoaded', async () => {
+  await initializePage();
+  await loadAccountData();
+});
+
+async function initializePage() {
+  try {
+    // Fetch current user info to determine if admin
+    const token = localStorage.getItem('token');
+    const res = await fetch('/api/account', { 
+      method: 'GET',
+      headers: {
+        'Authorization': `Bearer ${token}`
+      }
+    });
+    
+    if (!res.ok) throw new Error('Failed to get account info');
+    const data = await res.json();
+    currentUserRole = data.role_name;
+
+    // Determine if this is admin view or self-view
+    isAdminView = currentUserRole === 'Admin' && parseInt(userId) !== data.user_id;
+
+    // Set up back button
+    const backButton = document.getElementById('backButton');
+    if (backButton) {
+      if (isAdminView) {
+        backButton.setAttribute('href', '/admin/accounts');
+        backButton.textContent = '← Back to Accounts';
+      } else {
+        backButton.setAttribute('href', '/account');
+        backButton.textContent = '← Back to Account';
+      }
+    }
+
+    // Set page subtitle
+    const subtitle = document.getElementById('page-subtitle');
+    if (subtitle) {
+      subtitle.textContent = isAdminView ? 'Admin Panel' : 'My Account';
+    }
+
+  } catch (err) {
+    console.error('Could not initialize page:', err);
+  }
+}
 
 async function loadAccountData() {
   try {
     const token = localStorage.getItem('token');
+    
     const response = await fetch(`/api/admin/account/${userId}`, {
       headers: {
         'Authorization': `Bearer ${token}`
@@ -19,6 +67,7 @@ async function loadAccountData() {
 
     const data = await response.json();
     currentAccount = data;
+    isAdminView = data.is_admin_view || false;
     populateForm(data);
 
     document.getElementById('loading').style.display = 'none';
@@ -37,11 +86,10 @@ function populateForm(data) {
 
   // Populate user fields
   document.getElementById('user_id').value = user.user_id || '';
-  document.getElementById('username').value = user.username || '';
   document.getElementById('email').value = user.email || '';
   document.getElementById('first_name').value = user.first_name || '';
   document.getElementById('last_name').value = user.last_name || '';
-  document.getElementById('type_id').value = typeId || '';
+  document.getElementById('type_id').value = data.role_name || '';
 
   // Show role-specific section
   document.getElementById('role-section').style.display = 'block';
@@ -66,8 +114,9 @@ function populateForm(data) {
     // Driver
     document.getElementById('driver-section').style.display = 'block';
     populateSponsorsTable(role.sponsors || []);
+    const totalBalance = parseFloat(role.total_balance) || 0;
     document.getElementById('total-balance').textContent = 
-      `Total Balance: $${(role.total_balance || 0).toFixed(2)}`;
+      `Total Balance: ${totalBalance.toFixed(2)}`;
   }
 }
 
@@ -83,9 +132,10 @@ function populateSponsorsTable(sponsors) {
   sponsors.forEach(sponsor => {
     const row = document.createElement('tr');
     row.style.borderBottom = '1px solid var(--c-gray-600)';
+    const balance = parseFloat(sponsor.balance) || 0;
     row.innerHTML = `
       <td style="padding: 1rem;">${sponsor.name || '-'}</td>
-      <td style="padding: 1rem; color: var(--c-green-500);">$${(sponsor.balance || 0).toFixed(2)}</td>
+      <td style="padding: 1rem; color: var(--c-green-500);">${balance.toFixed(2)}</td>
       <td style="padding: 1rem;">${sponsor.status || '-'}</td>
       <td style="padding: 1rem; color: var(--c-text-tertiary);">${sponsor.since_at ? new Date(sponsor.since_at).toLocaleDateString() : '-'}</td>
       <td style="padding: 1rem; color: var(--c-text-tertiary);">${sponsor.until_at ? new Date(sponsor.until_at).toLocaleDateString() : '-'}</td>
@@ -97,17 +147,15 @@ function populateSponsorsTable(sponsors) {
 async function saveChanges() {
   try {
     const token = localStorage.getItem('token');
-    const typeId = parseInt(document.getElementById('type_id').value);
 
     const updateData = {
-      username: document.getElementById('username').value,
       email: document.getElementById('email').value,
       first_name: document.getElementById('first_name').value,
-      last_name: document.getElementById('last_name').value,
-      type_id: typeId
+      last_name: document.getElementById('last_name').value
     };
 
     // Add role-specific data
+    const typeId = currentAccount.user.type_id;
     if (typeId == 1) {
       updateData.role_data = {
         admin_permissions: document.getElementById('admin_permissions').value

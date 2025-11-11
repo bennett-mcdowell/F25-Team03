@@ -4,7 +4,7 @@
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
   <title>Account Details</title>
-  <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+  <link rel="stylesheet" href="/static/css/style.css">
 </head>
 <body>
   <div class="responsive-wrapper">
@@ -19,19 +19,31 @@
           </div>
           <div class="logo-title">
             <span>Account Details</span>
-            <span>Admin Panel</span>
+            <span id="page-subtitle">Admin Panel</span>
           </div>
         </div>
         <div class="app-header-actions">
-          <a href="/admin/home" class="flat-button">← Back to Accounts</a>
+          <a href="#" id="backButton" class="flat-button">← Back</a>
         </div>
       </div>
 
       <div class="app-body">
-        <div id="alert" class="alert" style="display: none;"></div>
-        <div id="loading" class="loading">Loading account details...</div>
+        <!-- Sidebar Navigation -->
+        <aside class="app-body-navigation">
+          <nav class="navigation">
+            <a href="#" id="homeBtn"><i class="ph-house"></i> Home</a>
+            <a href="/market" id="catalogBtn"><i class="ph-shopping-cart"></i> Catalog</a>
+            <a href="/about" id="aboutBtn"><i class="ph-info"></i> About</a>
+            <a href="/account" id="accountBtn"><i class="ph-user"></i> Account</a>
+            <a href="/login" id="logoutBtnSidebar"><i class="ph-sign-out"></i> Logout</a>
+          </nav>
+        </aside>
 
-        <div id="content" style="display: none; width: 100%;">
+        <div style="width: 100%;">
+          <div id="alert" class="alert" style="display: none;"></div>
+          <div id="loading" class="loading">Loading account details...</div>
+
+          <div id="content" style="display: none; width: 100%;">
           <!-- User Information Section -->
           <div class="service-section">
             <h2>User Information</h2>
@@ -41,12 +53,12 @@
                 <input type="text" id="user_id" readonly disabled>
               </div>
               <div class="form-group">
-                <label for="username">Username</label>
-                <input type="text" id="username">
-              </div>
-              <div class="form-group">
                 <label for="email">Email</label>
                 <input type="email" id="email">
+              </div>
+              <div class="form-group">
+                <label for="type_id">User Type</label>
+                <input type="text" id="type_id" readonly disabled>
               </div>
             </div>
             <div class="tiles" style="margin-top: 1rem;">
@@ -57,14 +69,6 @@
               <div class="form-group">
                 <label for="last_name">Last Name</label>
                 <input type="text" id="last_name">
-              </div>
-              <div class="form-group">
-                <label for="type_id">User Type</label>
-                <select id="type_id">
-                  <option value="1">Admin</option>
-                  <option value="2">Sponsor</option>
-                  <option value="3">Driver</option>
-                </select>
               </div>
             </div>
           </div>
@@ -128,6 +132,6 @@
     </div>
   </div>
 
-  <script src="{{ url_for('static', filename='js/account_detail.js') }}"></script>
+  <script src="/static/js/account_detail.js"></script>
 </body>
 </html>

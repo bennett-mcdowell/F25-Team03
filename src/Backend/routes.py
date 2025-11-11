@@ -80,7 +80,6 @@ def cart_page():
 
 @routes_bp.route('/account/<int:user_id>')
 @token_required
-@require_role("admin")
 def account_details(user_id):
     """serve the account detail page for a specific user"""
     return render_template('account_details.html')
