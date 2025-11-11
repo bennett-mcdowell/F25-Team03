@@ -21,7 +21,64 @@ def login_page():
 @routes_bp.route('/market')
 @token_required
 def market():
-    api_response = get_fake_store_data()
+    from flask import g
+    from utils.db import get_db_connection
+    
+    # Check if user is a driver
+    user_id = g.decoded_token.get("user_id") or g.decoded_token.get("sub")
+    role = g.decoded_token.get("role")
+    
+    if role == "driver":
+        # Use driver catalog endpoint to filter products
+        conn = None
+        cur = None
+        try:
+            conn = get_db_connection()
+            cur = conn.cursor(dictionary=True)
+            
+            # Get driver_id
+            cur.execute("SELECT driver_id FROM driver WHERE user_id = %s", (user_id,))
+            driver = cur.fetchone()
+            
+            if driver:
+                driver_id = driver['driver_id']
+                
+                # Get all products from Fake Store API
+                all_products = get_fake_store_data()
+                
+                if all_products and isinstance(all_products, dict) and 'products' in all_products:
+                    products = all_products['products']
+                    
+                    # Get driver's active sponsors and their hidden products
+                    cur.execute("""
+                        SELECT scc.product_id, scc.is_hidden
+                        FROM driver_sponsor ds
+                        JOIN sponsor_catalog_curation scc ON ds.sponsor_id = scc.sponsor_id
+                        WHERE ds.driver_id = %s AND ds.status = 'ACTIVE'
+                    """, (driver_id,))
+                    
+                    hidden_products = {row['product_id'] for row in cur.fetchall() if row['is_hidden'] == 1}
+                    
+                    # Filter out hidden products
+                    visible_products = [p for p in products if p['id'] not in hidden_products]
+                    
+                    api_response = {'products': visible_products}
+                else:
+                    api_response = all_products
+            else:
+                api_response = get_fake_store_data()
+        except Exception as e:
+            print(f"Error filtering driver catalog: {e}")
+            api_response = get_fake_store_data()
+        finally:
+            if cur:
+                cur.close()
+            if conn:
+                conn.close()
+    else:
+        # For non-drivers, show all products
+        api_response = get_fake_store_data()
+    
     return render_template('market.html', api_data=api_response)
 
 @routes_bp.route('/about')
@@ -61,6 +118,12 @@ def account_page():
 def sponsor_home():
     return render_template('sponsor_landing.html')
 
+@routes_bp.route('/sponsor/catalog')
+@token_required
+@require_role("sponsor")
+def sponsor_catalog():
+    return render_template('sponsor_catalog.html')
+
 @routes_bp.route('/admin/home')
 @token_required
 @require_role("admin")
@@ -83,6 +146,10 @@ def cart_page():
 def account_details(user_id):
     """serve the account detail page for a specific user"""
     return render_template('account_details.html')
+
+@routes_bp.route('/impersonate')
+def impersonate_page():
+    return render_template('impersonate.html')
 
 # @routes_bp.route('/api/register', methods=['POST'])
 # def register_api():
