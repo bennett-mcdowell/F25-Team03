@@ -43,6 +43,11 @@ document.addEventListener('DOMContentLoaded', async () => {
             // Show "Manage Catalog" link for sponsors
             if (manageCatalogBtn) manageCatalogBtn.style.display = 'block';
         }
+        else if (role === 'Sponsor') {
+            homeUrl = '/sponsor/home';
+            // Show "Manage Catalog" link for sponsors
+            if (manageCatalogBtn) manageCatalogBtn.style.display = 'block';
+        }
         else if (role === 'Driver') homeUrl = '/driver/home';
 
         homeBtn.setAttribute('href', homeUrl);
