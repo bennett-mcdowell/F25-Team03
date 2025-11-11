@@ -12,9 +12,13 @@ const ProtectedRoute = ({ children, allowedRoles }) => {
     return <Navigate to="/login" replace />;
   }
 
-  if (allowedRoles && !allowedRoles.includes(user.role)) {
+  // Get role from user.role_name (backend returns role_name as the role string)
+  // Normalize to lowercase for comparison
+  const userRole = user.role_name?.toLowerCase();
+
+  if (allowedRoles && !allowedRoles.includes(userRole)) {
     // Redirect to appropriate dashboard based on role
-    switch (user.role) {
+    switch (userRole) {
       case 'admin':
         return <Navigate to="/admin" replace />;
       case 'sponsor':

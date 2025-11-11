@@ -16,7 +16,8 @@ const Layout = ({ children }) => {
   };
 
   const getDashboardLink = () => {
-    switch (user?.role) {
+    const role = user?.role_name?.toLowerCase();
+    switch (role) {
       case 'admin':
         return '/admin';
       case 'sponsor':
@@ -38,14 +39,14 @@ const Layout = ({ children }) => {
           <li>
             <Link to={getDashboardLink()}>Dashboard</Link>
           </li>
-          {user?.role === 'admin' && (
+          {user?.role_name?.toLowerCase() === 'admin' && (
             <>
               <li>
                 <Link to="/admin/accounts">Accounts</Link>
               </li>
             </>
           )}
-          {user?.role === 'sponsor' && (
+          {user?.role_name?.toLowerCase() === 'sponsor' && (
             <>
               <li>
                 <Link to="/sponsor/drivers">Drivers</Link>
@@ -55,7 +56,7 @@ const Layout = ({ children }) => {
               </li>
             </>
           )}
-          {user?.role === 'driver' && (
+          {user?.role_name?.toLowerCase() === 'driver' && (
             <>
               <li>
                 <Link to="/driver/sponsors">Sponsors</Link>
@@ -80,9 +81,9 @@ const Layout = ({ children }) => {
         {user && (
           <div className="sidebar-footer">
             <p>
-              <strong>{user.username}</strong>
+              <strong>{user.user?.email || 'User'}</strong>
             </p>
-            <p className="user-role">{user.role}</p>
+            <p className="user-role">{user.role_name}</p>
           </div>
         )}
       </nav>

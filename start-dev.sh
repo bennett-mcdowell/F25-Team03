@@ -1,21 +1,31 @@
 #!/bin/bash
 
+# Stop any existing containers
+echo "🧹 Cleaning up old containers..."
+docker stop flask-backend 2>/dev/null || true
+docker rm flask-backend 2>/dev/null || true
+
 # Start Backend in Docker
-echo "🐳 Starting Flask backend in Docker on port 5000..."
+echo "🐳 Building and starting Flask backend on port 5000..."
 cd src
-docker run -d --rm --name flask-backend -p 5000:5000 \
-  -e DB_HOST="${DB_HOST}" \
-  -e DB_USER="${DB_USER}" \
-  -e DB_PASSWORD="${DB_PASSWORD}" \
-  -e DB_NAME="${DB_NAME}" \
-  -e PORT=5000 \
-  myapp
+docker build -t myapp .
+
+if ! docker run -d -p 5000:5000 --name flask-backend myapp; then
+  echo "❌ Failed to start backend"
+  exit 1
+fi
 
 echo "✅ Backend running at http://localhost:5000"
 
+# Check if node_modules exists, if not install
+cd ../Frontend_Rework
+if [ ! -d "node_modules" ]; then
+  echo "📦 Installing frontend dependencies..."
+  npm install
+fi
+
 # Start React Frontend
 echo "⚛️  Starting React frontend on port 3000..."
-cd ../Frontend_Rework
 npm run dev &
 
 echo ""

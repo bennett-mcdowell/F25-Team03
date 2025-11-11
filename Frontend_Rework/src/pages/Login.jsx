@@ -18,9 +18,14 @@ const Login = () => {
 
     try {
       const data = await login(username, password);
+      console.log('Login response:', data);
       
-      // Redirect based on role
-      switch (data.role) {
+      // Redirect based on role returned from login
+      // Note: login returns the role directly from /api/login response
+      const role = data.role;
+      console.log('Navigating to dashboard for role:', role);
+      
+      switch (role) {
         case 'admin':
           navigate('/admin');
           break;
@@ -31,9 +36,11 @@ const Login = () => {
           navigate('/driver');
           break;
         default:
+          console.log('Unknown role, navigating to home');
           navigate('/');
       }
     } catch (err) {
+      console.error('Login error:', err);
       setError(err.response?.data?.error || 'Login failed. Please try again.');
     } finally {
       setLoading(false);

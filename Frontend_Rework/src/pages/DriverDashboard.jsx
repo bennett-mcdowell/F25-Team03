@@ -16,14 +16,12 @@ const DriverDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [sponsorsData, pointsData, statusData] = await Promise.all([
-        driverService.getSponsors(),
-        driverService.getPointBalance(),
-        driverService.getApplicationStatus(),
-      ]);
+      // /api/driver/sponsors returns sponsors, total_points, and driver_id
+      const sponsorsData = await driverService.getSponsors();
       setSponsors(sponsorsData.sponsors || []);
-      setPointBalance(pointsData.points || 0);
-      setApplicationStatus(statusData.applications || []);
+      setPointBalance(sponsorsData.total_points || 0);
+      // TODO: Fetch application status
+      setApplicationStatus([]);
     } catch (err) {
       setError('Failed to load data');
       console.error(err);

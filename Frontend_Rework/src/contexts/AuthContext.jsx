@@ -28,6 +28,10 @@ export const AuthProvider = ({ children }) => {
       const userData = await authService.getCurrentUser();
       setUser(userData);
     } catch (error) {
+      // 401 is expected when not logged in - don't treat as error
+      if (error.response?.status !== 401) {
+        console.error('Auth check failed:', error);
+      }
       setUser(null);
     } finally {
       setLoading(false);
@@ -36,9 +40,13 @@ export const AuthProvider = ({ children }) => {
   };
 
   const login = async (username, password) => {
-    const data = await authService.login(username, password);
-    await checkAuth(); // Fetch user data after login
-    return data;
+    const loginResponse = await authService.login(username, password);
+    console.log('AuthContext: Login response:', loginResponse);
+    // Fetch full user data after successful login
+    await checkAuth();
+    console.log('AuthContext: User data after checkAuth:', user);
+    // Return the login response (which has the role for navigation)
+    return loginResponse;
   };
 
   const logout = async () => {

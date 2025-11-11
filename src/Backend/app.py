@@ -73,8 +73,9 @@ app.config['JWT_TOKEN_LOCATION'] = ['cookies']
 # Consider enabling CSRF protection for cookie-authenticated forms in production
 app.config['JWT_COOKIE_CSRF_PROTECT'] = False
 app.config['JWT_ACCESS_TOKEN_EXPIRES'] = 24 * 3600
-app.config['JWT_COOKIE_SAMESITE'] = 'None'  # Changed from 'Lax' for cross-origin
+app.config['JWT_COOKIE_SAMESITE'] = 'Lax'  # Use 'Lax' for localhost development
 app.config['JWT_COOKIE_SECURE'] = False  # Set to True in production with HTTPS
+app.config['JWT_COOKIE_DOMAIN'] = None  # Allow cookies to work across localhost ports
 
 jwt = JWTManager(app)
 
