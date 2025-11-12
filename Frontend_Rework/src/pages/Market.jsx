@@ -90,7 +90,11 @@ const Market = () => {
 
   // Handlers
   const handleAddToCart = (product) => {
-    addToCart(product);
+    const sponsorIdToUse = (user && user.role_name === 'Driver' && selectedSponsor) 
+      ? parseInt(selectedSponsor) 
+      : null;
+    
+    addToCart(product, sponsorIdToUse);
     showNotification(`Added "${product.title}" to cart!`);
   };
 

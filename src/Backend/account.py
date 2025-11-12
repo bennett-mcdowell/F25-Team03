@@ -968,9 +968,9 @@ def purchase_api():
         driver_sponsor_id = ds_row['driver_sponsor_id']
         current_balance = float(ds_row['balance'])
         
-        # 3. Calculate total cost (items are already in points)
-        total_points = sum(item.get('price', 0) * item.get('quantity', 1) for item in cart_items)
-        total_dollars = total_points / 100.0  # Convert points back to dollars for DB
+        # 3. Calculate total cost in dollars (items prices are in dollars from frontend)
+        total_dollars = sum(item.get('price', 0) * item.get('quantity', 1) for item in cart_items)
+        total_points = int(total_dollars * 100)  # Convert to points for display
         
         # 4. Check if driver has enough balance
         if current_balance < total_dollars:
@@ -992,7 +992,7 @@ def purchase_api():
         # 6. Create transaction records for each item
         transaction_time = datetime.datetime.now()
         for item in cart_items:
-            item_price_dollars = (item.get('price', 0) * item.get('quantity', 1)) / 100.0
+            item_price_dollars = item.get('price', 0) * item.get('quantity', 1)
             cur.execute("""
                 INSERT INTO transactions (`date`, user_id, amount, item_id, driver_sponsor_id)
                 VALUES (%s, %s, %s, %s, %s)

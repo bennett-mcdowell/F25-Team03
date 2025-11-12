@@ -6,7 +6,7 @@ import '../styles/Dashboard.css';
  * Follows Single Responsibility Principle - only displays product info
  */
 const ProductCard = ({ product, onAddToCart, onHide, isHidden, showHideButton = true }) => {
-  const priceInPoints = Math.floor(product.price * 100);
+  const priceInPoints = Math.round(product.price * 100);
 
   return (
     <div className={`product-card ${isHidden ? 'hidden-product' : ''}`}>

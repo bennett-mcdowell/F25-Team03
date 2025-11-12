@@ -89,6 +89,11 @@
   color: #7f8c8d;
   font-size: 1.2rem;
   padding: 40px 0;
+  grid-column: 1 / -1;
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  align-items: center;
 }
 
 .checkout-btn {
@@ -101,11 +106,146 @@
   font-weight: 600;
   cursor: pointer;
   transition: background 0.2s;
+  width: 100%;
+  max-width: 300px;
+  margin: 0 auto;
+  display: block;
 }
+
+.checkout-btn:hover:not(:disabled) {
+  background: #229954;
+}
+
 .checkout-btn:disabled {
-  background: #ccc;
+  background: #95a5a6;
   cursor: not-allowed;
+  opacity: 0.6;
 }
+
+/* Cart Sponsor Selection */
+.sponsor-selection-card {
+  margin-bottom: 1.5rem;
+}
+
+.sponsor-selection-card .form-group {
+  margin-bottom: 0;
+}
+
+.sponsor-selection-card .sponsor-select {
+  width: 100%;
+  max-width: 500px;
+}
+
+.balance-info {
+  margin-top: 1rem;
+  padding: 1rem;
+  background: #f8f9fa;
+  border-radius: 6px;
+  border-left: 4px solid #3498db;
+}
+
+.balance-info p {
+  margin: 0;
+  line-height: 1.8;
+  color: #34495e;
+}
+
+.balance-sufficient {
+  border-left-color: #27ae60 !important;
+}
+
+.balance-insufficient {
+  border-left-color: #e74c3c !important;
+}
+
+.status-success {
+  color: #27ae60;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+.status-error {
+  color: #e74c3c;
+  font-weight: 600;
+  font-size: 0.95rem;
+}
+
+/* Error and Success Cards */
+.error-card {
+  background: #fee;
+  border-left: 4px solid #e74c3c;
+  margin-bottom: 1.5rem;
+}
+
+.success-card {
+  background: #f0fdf4;
+  border-left: 4px solid #22c55e;
+  margin-bottom: 1.5rem;
+}
+
+.error-text {
+  color: #e74c3c;
+  margin: 0;
+  font-weight: 500;
+}
+
+.success-text {
+  color: #16a34a;
+  margin: 0;
+  font-weight: 500;
+}
+
+/* Sponsor Checkout Sections */
+.sponsor-checkout-section {
+  padding: 1.5rem;
+  background: #f7fafc;
+  border-radius: 8px;
+  margin-bottom: 1rem;
+}
+
+.sponsor-checkout-section:last-child {
+  margin-bottom: 0;
+}
+
+.sponsor-checkout-section h3 {
+  margin: 0 0 1rem 0;
+  color: #2d3748;
+  font-size: 1.2rem;
+  font-weight: 600;
+}
+
+.checkout-details {
+  display: flex;
+  flex-direction: column;
+  gap: 0.75rem;
+}
+
+.checkout-row {
+  display: flex;
+  justify-content: space-between;
+  padding: 0.5rem;
+  background: white;
+  border-radius: 4px;
+}
+
+.checkout-row.status-row {
+  font-weight: 600;
+}
+
+/* Cart Item Sponsor Label */
+.cart-item-sponsor {
+  padding: 0.5rem;
+  background: #e6f3ff;
+  border-radius: 4px;
+  text-align: center;
+  margin-top: 0.5rem;
+}
+
+.cart-item-sponsor small {
+  color: #2c5282;
+  font-weight: 500;
+}
+
 .dashboard {
   max-width: 1400px;
   margin: 0 auto;
