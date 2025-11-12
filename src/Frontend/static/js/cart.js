@@ -12,16 +12,16 @@ const Cart = {
         this.render();
     },
     
-    remove(id) {
+    remove(id, sponsor_id) {
         let cart = this.get();
-        cart = cart.filter(item => item.id !== id);
+        cart = cart.filter(item => !(item.id === id && item.sponsor_id === sponsor_id));
         this.save(cart);
         this.render();
     },
     
-    updateQty(id, change) {
+    updateQty(id, sponsor_id, change) {
         let cart = this.get();
-        const item = cart.find(i => i.id === id);
+        const item = cart.find(i => i.id === id && i.sponsor_id === sponsor_id);
         if (item) {
             item.quantity = Math.max(1, (item.quantity || 1) + change);
             this.save(cart);
@@ -45,14 +45,25 @@ const Cart = {
         
         const token = localStorage.getItem('jwt');
         
-        // Check if user is logged in
         if (!token) {
-            // Mock mode for demo
-            await this.mockCheckout(cart, total);
+            alert('Please log in to complete your purchase');
+            window.location.href = '/login';
             return;
         }
         
-        // Real purchase with database
+        // Check that all items are from same sponsor
+        const sponsorIds = [...new Set(cart.map(item => item.sponsor_id))];
+        if (sponsorIds.length > 1) {
+            alert('Error: Your cart contains items from multiple sponsors. Please checkout with one sponsor at a time.');
+            return;
+        }
+        
+        const sponsor_id = cart[0].sponsor_id;
+        if (!sponsor_id) {
+            alert('Error: No sponsor selected for cart items');
+            return;
+        }
+        
         btn.disabled = true;
         btn.textContent = 'Processing...';
         
@@ -63,61 +74,39 @@ const Cart = {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${token}`
                 },
-                body: JSON.stringify({ items: cart })
+                body: JSON.stringify({ 
+                    items: cart,
+                    sponsor_id: sponsor_id
+                })
             });
             
             const data = await res.json();
             
             if (res.ok) {
-                alert(`✅ Purchase Successful!\n\n` +
-                      `Items purchased: ${data.items_purchased}\n` +
-                      `Total spent: ${data.total_spent} points\n` +
-                      `Previous balance: ${data.previous_balance} points\n` +
-                      `New balance: ${data.new_balance} points`);
+                // Clear cart before redirecting
                 this.clear();
                 
-                // Reload balance on market page if it exists
-                if (window.loadUserBalance) {
-                    window.loadUserBalance();
-                }
+                // Build confirmation page URL with purchase details
+                const params = new URLSearchParams({
+                    items_purchased: data.items_purchased,
+                    total_spent: data.total_spent,
+                    new_balance: data.new_balance,
+                    sponsor_id: data.sponsor_id
+                });
+                
+                // Redirect to confirmation page
+                window.location.href = `/purchase-confirmation?${params.toString()}`;
             } else {
                 alert(`❌ Purchase Failed\n\n${data.error}`);
+                btn.disabled = false;
+                btn.textContent = 'Checkout';
             }
         } catch (error) {
             console.error('Purchase error:', error);
             alert('Purchase failed. Please try again.');
-        } finally {
             btn.disabled = false;
             btn.textContent = 'Checkout';
         }
-    },
-    
-    // Mock checkout for demo mode (no login)
-    async mockCheckout(cart, total) {
-        const btn = document.getElementById('checkout-btn');
-        btn.disabled = true;
-        btn.textContent = 'Processing...';
-        
-        // Simulate network delay
-        await new Promise(resolve => setTimeout(resolve, 1500));
-        
-        const mockBalance = 50000;
-        const newBalance = mockBalance - total;
-        
-        if (total > mockBalance) {
-            alert(`Insufficient balance!\n\nRequired: ${total} points\nYou have: ${mockBalance} points\nShortfall: ${total - mockBalance} points`);
-        } else {
-            alert(`✅ Purchase Successful! (DEMO MODE)\n\n` +
-                  `Items purchased: ${cart.length}\n` +
-                  `Total spent: ${total} points\n` +
-                  `Previous balance: ${mockBalance} points\n` +
-                  `New balance: ${newBalance} points\n\n` +
-                  `(Login for real purchases)`);
-            this.clear();
-        }
-        
-        btn.disabled = false;
-        btn.textContent = 'Checkout';
     },
     
     render() {
@@ -141,13 +130,14 @@ const Cart = {
                 <div class="item-details">
                     <h3>${item.title}</h3>
                     <p class="price">${item.price} points each</p>
+                    <p class="sponsor-info" style="font-size: 0.85rem; color: var(--c-text-tertiary);">Sponsor ID: ${item.sponsor_id}</p>
                     <div class="item-quantity">
-                        <button class="quantity-btn" onclick="Cart.updateQty(${item.id}, -1)">−</button>
+                        <button class="quantity-btn" onclick="Cart.updateQty(${item.id}, ${item.sponsor_id}, -1)">−</button>
                         <span class="quantity-display">${item.quantity || 1}</span>
-                        <button class="quantity-btn" onclick="Cart.updateQty(${item.id}, 1)">+</button>
+                        <button class="quantity-btn" onclick="Cart.updateQty(${item.id}, ${item.sponsor_id}, 1)">+</button>
                     </div>
                 </div>
-                <button class="remove-btn" onclick="Cart.remove(${item.id})">Remove</button>
+                <button class="remove-btn" onclick="Cart.remove(${item.id}, ${item.sponsor_id})">Remove</button>
             </div>
         `).join('');
         

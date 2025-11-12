@@ -6,8 +6,6 @@
     <title>Product Catalog</title>
     <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
     <link rel="stylesheet" href="{{ url_for('static', filename='css/market.css') }}">
-    <script src="{{ url_for('static', filename='js/auth.js') }}"></script>
-    <!-- <script>Auth.requireAuth('/login');</script> -->
 </head>
 <body>
     <div class="responsive-wrapper">
@@ -20,6 +18,14 @@
                     </div>
                 </div>
                 <div style="margin-left: auto; display: flex; align-items: center; gap: 1rem;">
+                    <!-- Sponsor Selector -->
+                    <div id="sponsor-selector-container" style="background: var(--c-gray-700); padding: 0.5rem 1rem; border-radius: 6px;">
+                        <label for="sponsor-select" style="color: var(--c-text-tertiary); font-size: 0.85rem; margin-right: 0.5rem;">Viewing:</label>
+                        <select id="sponsor-select" style="background: var(--c-gray-600); color: var(--c-text-primary); border: none; padding: 0.25rem 0.5rem; border-radius: 4px; font-weight: 600;">
+                            <option value="">Loading sponsors...</option>
+                        </select>
+                    </div>
+                    
                     <!-- Balance Display -->
                     <div id="balance-display" style="background: var(--c-gray-700); padding: 0.5rem 1rem; border-radius: 6px; font-weight: 600; color: var(--c-green-500);">
                         <span id="user-balance">--</span> points

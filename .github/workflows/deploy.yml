@@ -34,9 +34,13 @@ jobs:
             cd Backend
             
             # Insert deployment record
-            DB_HOST=$DB_HOST DB_NAME=$DB_NAME DB_USER=$DB_USER DB_PASSWORD=$DB_PASSWORD python3 insert_deployment.py
+            export DB_HOST="$DB_HOST"
+            export DB_NAME="$DB_NAME"
+            export DB_USER="$DB_USER"
+            export DB_PASSWORD="$DB_PASSWORD"
+            python3 insert_deployment.py || echo "Warning: Failed to insert deployment record"
             
             # Restart app
             pm2 delete flask-app || true
-            PORT=$PORT pm2 start app.py --name flask-app --interpreter python3
+            PORT=$PORT DB_HOST=$DB_HOST DB_NAME=$DB_NAME DB_USER=$DB_USER DB_PASSWORD=$DB_PASSWORD pm2 start app.py --name flask-app --interpreter python3
             pm2 save

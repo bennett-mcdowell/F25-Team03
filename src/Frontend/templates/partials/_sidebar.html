@@ -4,6 +4,8 @@
     <a href="/market" id="catalogBtn"><i class="ph-shopping-cart"></i> Catalog</a>
     <a href="/about" id="aboutBtn"><i class="ph-info"></i> About</a>
     <a href="/account" id="accountBtn"><i class="ph-user"></i> Account</a>
+    <a href="#" id="accountDetailsBtn"><i class="ph-gear"></i> Account Details</a>
+    <a href="/sponsor/catalog" id="manageCatalogBtn" style="display: none;"><i class="ph-gear"></i> Manage Catalog</a>
     <a href="/login" id="logoutBtnSidebar"><i class="ph-sign-out"></i> Logout</a>
   </nav>
 </aside>
@@ -11,26 +13,60 @@
 <script>
 document.addEventListener('DOMContentLoaded', async () => {
     const homeBtn = document.getElementById('homeBtn');
+    const accountDetailsBtn = document.getElementById('accountDetailsBtn');
+    const manageCatalogBtn = document.getElementById('manageCatalogBtn');
     if (!homeBtn) return;
 
     try {
         // Fetch user info
-        const res = await fetch('/api/account', { method: 'GET', credentials: 'same-origin' });
+        const token = localStorage.getItem('token');
+        const res = await fetch('/api/account', { 
+            method: 'GET', 
+            credentials: 'same-origin',
+            headers: {
+                'Authorization': `Bearer ${token}`
+            }
+        });
+        
         if (!res.ok) throw new Error('Failed to get account info');
         const data = await res.json();
+        console.log('Account data:', data); // Debug log
+        
         const role = data.role_name; // role_name from backend
+        const userId = data.user?.user_id; // Get user_id from the user object
 
         // Redirect Home button dynamically
         let homeUrl = '/home'; // default
         if (role === 'Admin') homeUrl = '/admin/home';
-        else if (role === 'Sponsor') homeUrl = '/sponsor/home';
+        else if (role === 'Sponsor') {
+            homeUrl = '/sponsor/home';
+            // Show "Manage Catalog" link for sponsors
+            if (manageCatalogBtn) manageCatalogBtn.style.display = 'block';
+        }
+        else if (role === 'Sponsor') {
+            homeUrl = '/sponsor/home';
+            // Show "Manage Catalog" link for sponsors
+            if (manageCatalogBtn) manageCatalogBtn.style.display = 'block';
+        }
         else if (role === 'Driver') homeUrl = '/driver/home';
 
         homeBtn.setAttribute('href', homeUrl);
 
+        // Set Account Details button to user's own account details page
+        if (accountDetailsBtn && userId) {
+            const detailsUrl = `/account/${userId}`;
+            console.log('Setting account details URL to:', detailsUrl); // Debug log
+            accountDetailsBtn.setAttribute('href', detailsUrl);
+        } else {
+            console.error('Missing accountDetailsBtn or userId:', { accountDetailsBtn, userId });
+        }
+
     } catch (err) {
         console.error('Could not set home button:', err);
         homeBtn.setAttribute('href', '/home'); // fallback
+        if (accountDetailsBtn) {
+            accountDetailsBtn.setAttribute('href', '/account'); // fallback to account summary
+        }
     }
 });
 </script>
