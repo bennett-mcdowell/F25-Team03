@@ -5,13 +5,14 @@ import '../styles/Dashboard.css';
 
 const SponsorDashboard = () => {
   const [activeDrivers, setActiveDrivers] = useState([]);
-  const [pendingApplications, setPendingApplications] = useState([]);
+  const [pendingDrivers, setPendingDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [pointsForm, setPointsForm] = useState({
     driverId: '',
     points: '',
     reason: '',
+    action: 'add', // 'add' or 'subtract'
   });
 
   useEffect(() => {
@@ -20,12 +21,11 @@ const SponsorDashboard = () => {
 
   const fetchData = async () => {
     try {
-      const [driversData, applicationsData] = await Promise.all([
-        sponsorService.getActiveDrivers(),
-        sponsorService.getPendingApplications(),
-      ]);
+      const driversData = await sponsorService.getActiveDrivers();
+      console.log('Sponsor data:', driversData);
       setActiveDrivers(driversData.drivers || []);
-      setPendingApplications(applicationsData.applications || []);
+  const pendingRes = await sponsorService.getPendingDrivers();
+  setPendingDrivers(pendingRes.pending_drivers || []);
     } catch (err) {
       setError('Failed to load data');
       console.error(err);
@@ -34,38 +34,43 @@ const SponsorDashboard = () => {
     }
   };
 
-  const handleApproveApplication = async (applicationId) => {
+  const handleApprovePendingDriver = async (driverId) => {
     try {
-      await sponsorService.approveApplication(applicationId);
-      fetchData();
+      await sponsorService.approvePendingDriver(driverId);
+      await fetchData();
     } catch (err) {
       alert('Failed to approve application');
       console.error(err);
     }
   };
 
-  const handleRejectApplication = async (applicationId) => {
-    try {
-      await sponsorService.rejectApplication(applicationId);
-      fetchData();
-    } catch (err) {
-      alert('Failed to reject application');
-      console.error(err);
-    }
+  const handleRejectPendingDriver = async (driverId) => {
+    // Placeholder: implement backend endpoint for rejection if needed
+    alert('Reject functionality not yet implemented in backend.');
   };
 
-  const handleAddPoints = async (e) => {
+  const handleManagePoints = async (e) => {
     e.preventDefault();
     try {
-      await sponsorService.addPoints(
-        pointsForm.driverId,
-        parseInt(pointsForm.points),
-        pointsForm.reason
-      );
-      setPointsForm({ driverId: '', points: '', reason: '' });
-      fetchData();
+      const points = parseInt(pointsForm.points);
+      if (pointsForm.action === 'add') {
+        await sponsorService.addPoints(
+          pointsForm.driverId,
+          points,
+          pointsForm.reason
+        );
+      } else {
+        await sponsorService.subtractPoints(
+          pointsForm.driverId,
+          points,
+          pointsForm.reason
+        );
+      }
+      setPointsForm({ driverId: '', points: '', reason: '', action: 'add' });
+      await fetchData();
+      alert(`Successfully ${pointsForm.action === 'add' ? 'added' : 'deducted'} ${points} points`);
     } catch (err) {
-      alert('Failed to add points');
+      alert(`Failed to ${pointsForm.action} points: ${err.response?.data?.error || err.message}`);
       console.error(err);
     }
   };
@@ -76,20 +81,31 @@ const SponsorDashboard = () => {
 
     try {
       await sponsorService.subtractPoints(driverId, points, reason);
-      fetchData();
+      await fetchData();
+      alert(`Successfully deducted ${points} points`);
     } catch (err) {
-      alert('Failed to subtract points');
+      alert(`Failed to subtract points: ${err.response?.data?.error || err.message}`);
       console.error(err);
     }
   };
 
   const handleImpersonate = async (accountId) => {
+    const driver = activeDrivers.find(d => d.user_id === accountId);
+    const driverName = driver ? `${driver.first_name} ${driver.last_name}` : 'this driver';
+    const driverEmail = driver?.email || '';
+    
+    if (!window.confirm(`Impersonate ${driverName} (${driverEmail})? You will be logged in as them.`)) {
+      return;
+    }
+    
     try {
-      await accountService.impersonate(accountId);
+      await sponsorService.impersonate(accountId);
+      // Reload to reflect new impersonated session
       window.location.reload();
     } catch (err) {
-      alert('Failed to impersonate user');
-      console.error(err);
+      const errorMsg = err.response?.data?.error || 'Failed to impersonate driver';
+      alert(errorMsg);
+      console.error('Impersonate error:', err);
     }
   };
 
@@ -118,18 +134,18 @@ const SponsorDashboard = () => {
               </thead>
               <tbody>
                 {activeDrivers.map((driver) => (
-                  <tr key={driver.id}>
-                    <td>{driver.id}</td>
+                  <tr key={driver.driver_id}>
+                    <td>{driver.driver_id}</td>
                     <td>
                       {driver.first_name} {driver.last_name}
                     </td>
-                    <td>{driver.username}</td>
                     <td>{driver.email}</td>
-                    <td>{driver.points || 0}</td>
+                    <td>{driver.email}</td>
+                    <td>{driver.balance || 0}</td>
                     <td>
                       <button
                         className="btn btn-sm btn-secondary"
-                        onClick={() => handleImpersonate(driver.id)}
+                        onClick={() => handleImpersonate(driver.user_id)}
                       >
                         Impersonate
                       </button>
@@ -141,56 +157,58 @@ const SponsorDashboard = () => {
           </div>
         </div>
 
-        {/* Pending Applications */}
+        {/* Pending Driver Applications */}
         <div className="dashboard-card">
-          <h2>Pending Applications</h2>
+          <h2>Pending Driver Applications</h2>
           <div className="table-container">
             <table>
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Driver Name</th>
-                  <th>Email</th>
-                  <th>Applied Date</th>
+                  <th>First Name</th>
+                  <th>Last Name</th>
+                  <th>Active Sponsor Count</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {pendingApplications.map((application) => (
-                  <tr key={application.id}>
-                    <td>{application.id}</td>
-                    <td>
-                      {application.first_name} {application.last_name}
-                    </td>
-                    <td>{application.email}</td>
-                    <td>{new Date(application.applied_date).toLocaleDateString()}</td>
-                    <td>
-                      <button
-                        className="btn btn-sm btn-success"
-                        onClick={() => handleApproveApplication(application.id)}
-                      >
-                        Approve
-                      </button>
-                      <button
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleRejectApplication(application.id)}
-                      >
-                        Reject
-                      </button>
-                    </td>
-                  </tr>
-                ))}
+                {pendingDrivers.length === 0 ? (
+                  <tr><td colSpan={4}>No pending applications.</td></tr>
+                ) : (
+                  pendingDrivers.map(driver => (
+                    <tr key={driver.driver_id}>
+                      <td>{driver.first_name}</td>
+                      <td>{driver.last_name}</td>
+                      <td>{driver.active_sponsor_count}</td>
+                      <td>
+                        <div className="action-buttons">
+                          <button
+                            className="btn btn-sm btn-success"
+                            onClick={() => handleApprovePendingDriver(driver.driver_id)}
+                          >
+                            Approve
+                          </button>
+                          <button
+                            className="btn btn-sm btn-danger"
+                            onClick={() => handleRejectPendingDriver(driver.driver_id)}
+                          >
+                            Reject
+                          </button>
+                        </div>
+                      </td>
+                    </tr>
+                  ))
+                )}
               </tbody>
             </table>
           </div>
         </div>
 
-        {/* Add Points Form */}
+        {/* Manage Points Form */}
         <div className="dashboard-card">
           <h2>Manage Points</h2>
-          <form onSubmit={handleAddPoints} className="points-form">
+          <form onSubmit={handleManagePoints} className="points-form">
             <div className="form-group">
-              <label htmlFor="driver">Driver</label>
+              <label htmlFor="driver">Select Driver</label>
               <select
                 id="driver"
                 value={pointsForm.driverId}
@@ -199,16 +217,47 @@ const SponsorDashboard = () => {
                 }
                 required
               >
-                <option value="">Select a driver</option>
+                <option value="">Choose a driver...</option>
                 {activeDrivers.map((driver) => (
-                  <option key={driver.id} value={driver.id}>
-                    {driver.first_name} {driver.last_name} ({driver.username})
+                  <option key={driver.driver_id} value={driver.driver_id}>
+                    {driver.first_name} {driver.last_name} - Balance: {driver.balance || 0} pts
                   </option>
                 ))}
               </select>
             </div>
+
             <div className="form-group">
-              <label htmlFor="points">Points</label>
+              <label>Action</label>
+              <div className="radio-group">
+                <label className="radio-label">
+                  <input
+                    type="radio"
+                    name="action"
+                    value="add"
+                    checked={pointsForm.action === 'add'}
+                    onChange={(e) =>
+                      setPointsForm({ ...pointsForm, action: e.target.value })
+                    }
+                  />
+                  <span>Add Points</span>
+                </label>
+                <label className="radio-label">
+                  <input
+                    type="radio"
+                    name="action"
+                    value="subtract"
+                    checked={pointsForm.action === 'subtract'}
+                    onChange={(e) =>
+                      setPointsForm({ ...pointsForm, action: e.target.value })
+                    }
+                  />
+                  <span>Deduct Points</span>
+                </label>
+              </div>
+            </div>
+
+            <div className="form-group">
+              <label htmlFor="points">Points Amount</label>
               <input
                 type="number"
                 id="points"
@@ -218,8 +267,10 @@ const SponsorDashboard = () => {
                 }
                 required
                 min="1"
+                placeholder="Enter points amount"
               />
             </div>
+
             <div className="form-group">
               <label htmlFor="reason">Reason</label>
               <input
@@ -230,11 +281,25 @@ const SponsorDashboard = () => {
                   setPointsForm({ ...pointsForm, reason: e.target.value })
                 }
                 required
+                placeholder={`Why are you ${pointsForm.action === 'add' ? 'adding' : 'deducting'} points?`}
               />
             </div>
-            <button type="submit" className="btn btn-primary">
-              Add Points
-            </button>
+
+            <div className="form-actions">
+              <button 
+                type="submit" 
+                className={`btn ${pointsForm.action === 'add' ? 'btn-success' : 'btn-danger'}`}
+              >
+                {pointsForm.action === 'add' ? '+ Add Points' : '− Deduct Points'}
+              </button>
+              <button 
+                type="button" 
+                className="btn btn-secondary"
+                onClick={() => setPointsForm({ driverId: '', points: '', reason: '', action: 'add' })}
+              >
+                Clear
+              </button>
+            </div>
           </form>
         </div>
       </div>

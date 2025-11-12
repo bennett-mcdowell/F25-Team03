@@ -4,9 +4,9 @@ import { driverService } from '../services/apiService';
 import '../styles/Dashboard.css';
 
 const DriverDashboard = () => {
-  const [sponsors, setSponsors] = useState([]);
+  const [enrolledSponsors, setEnrolledSponsors] = useState([]);
+  const [availableSponsors, setAvailableSponsors] = useState([]);
   const [pointBalance, setPointBalance] = useState(0);
-  const [applicationStatus, setApplicationStatus] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
 
@@ -16,12 +16,14 @@ const DriverDashboard = () => {
 
   const fetchData = async () => {
     try {
-      // /api/driver/sponsors returns sponsors, total_points, and driver_id
-      const sponsorsData = await driverService.getSponsors();
-      setSponsors(sponsorsData.sponsors || []);
-      setPointBalance(sponsorsData.total_points || 0);
-      // TODO: Fetch application status
-      setApplicationStatus([]);
+      // Get enrolled sponsors and point balance
+      const enrolledData = await driverService.getSponsors();
+      setEnrolledSponsors(enrolledData.sponsors || []);
+      setPointBalance(enrolledData.total_points || 0);
+
+      // Get all available sponsors
+      const availableData = await driverService.getAvailableSponsors();
+      setAvailableSponsors(availableData.sponsors || []);
     } catch (err) {
       setError('Failed to load data');
       console.error(err);
@@ -41,16 +43,17 @@ const DriverDashboard = () => {
     }
   };
 
-  const isApplied = (sponsorId) => {
-    return applicationStatus.some(
-      (app) => app.sponsor_id === sponsorId && app.status === 'pending'
-    );
-  };
-
-  const isAccepted = (sponsorId) => {
-    return applicationStatus.some(
-      (app) => app.sponsor_id === sponsorId && app.status === 'approved'
-    );
+  const getSponsorStatus = (sponsor) => {
+    if (!sponsor.has_relationship) {
+      return { label: 'Available', className: 'available', canApply: true };
+    }
+    if (sponsor.relationship_status === 'ACTIVE') {
+      return { label: 'Active', className: 'active', canApply: false };
+    }
+    if (sponsor.relationship_status === 'PENDING') {
+      return { label: 'Pending', className: 'pending', canApply: false };
+    }
+    return { label: 'Unknown', className: 'unknown', canApply: false };
   };
 
   if (loading) return <Layout><div>Loading...</div></Layout>;
@@ -70,6 +73,37 @@ const DriverDashboard = () => {
           </div>
         </div>
 
+        {/* My Sponsors */}
+        <div className="dashboard-card">
+          <h2>My Sponsors</h2>
+          <div className="table-container">
+            <table>
+              <thead>
+                <tr>
+                  <th>Sponsor Name</th>
+                  <th>Description</th>
+                  <th>Point Balance</th>
+                </tr>
+              </thead>
+              <tbody>
+                {enrolledSponsors.length === 0 ? (
+                  <tr>
+                    <td colSpan="3" style={{textAlign: 'center'}}>No enrolled sponsors yet</td>
+                  </tr>
+                ) : (
+                  enrolledSponsors.map((sponsor) => (
+                    <tr key={sponsor.sponsor_id}>
+                      <td>{sponsor.sponsor_name}</td>
+                      <td>{sponsor.description || 'N/A'}</td>
+                      <td>{sponsor.balance || 0}</td>
+                    </tr>
+                  ))
+                )}
+              </tbody>
+            </table>
+          </div>
+        </div>
+
         {/* Available Sponsors */}
         <div className="dashboard-card">
           <h2>Available Sponsors</h2>
@@ -77,79 +111,43 @@ const DriverDashboard = () => {
             <table>
               <thead>
                 <tr>
-                  <th>ID</th>
-                  <th>Name</th>
-                  <th>Company</th>
-                  <th>Email</th>
+                  <th>Sponsor Name</th>
+                  <th>Description</th>
                   <th>Status</th>
                   <th>Actions</th>
                 </tr>
               </thead>
               <tbody>
-                {sponsors.map((sponsor) => (
-                  <tr key={sponsor.id}>
-                    <td>{sponsor.id}</td>
-                    <td>
-                      {sponsor.first_name} {sponsor.last_name}
-                    </td>
-                    <td>{sponsor.company || 'N/A'}</td>
-                    <td>{sponsor.email}</td>
-                    <td>
-                      {isAccepted(sponsor.id) ? (
-                        <span className="status-badge status-active">Active</span>
-                      ) : isApplied(sponsor.id) ? (
-                        <span className="status-badge status-pending">Pending</span>
-                      ) : (
-                        <span className="status-badge status-available">Available</span>
-                      )}
-                    </td>
-                    <td>
-                      {!isAccepted(sponsor.id) && !isApplied(sponsor.id) && (
-                        <button
-                          className="btn btn-sm btn-primary"
-                          onClick={() => handleApplyToSponsor(sponsor.id)}
-                        >
-                          Apply
-                        </button>
-                      )}
-                      {isApplied(sponsor.id) && (
-                        <span className="text-muted">Application pending</span>
-                      )}
-                      {isAccepted(sponsor.id) && (
-                        <span className="text-success">Enrolled</span>
-                      )}
-                    </td>
-                  </tr>
-                ))}
-              </tbody>
-            </table>
-          </div>
-        </div>
-
-        {/* Application History */}
-        <div className="dashboard-card">
-          <h2>Application History</h2>
-          <div className="table-container">
-            <table>
-              <thead>
-                <tr>
-                  <th>Sponsor</th>
-                  <th>Applied Date</th>
-                  <th>Status</th>
-                </tr>
-              </thead>
-              <tbody>
-                {applicationStatus.map((application, index) => (
-                  <tr key={index}>
-                    <td>{application.sponsor_name}</td>
-                    <td>{new Date(application.applied_date).toLocaleDateString()}</td>
-                    <td>
-                      <span className={`status-badge status-${application.status}`}>
-                        {application.status}
-                      </span>
-                    </td>
-                  </tr>
-                ))}
+                {availableSponsors.map((sponsor) => {
+                  const status = getSponsorStatus(sponsor);
+                  return (
+                    <tr key={sponsor.sponsor_id}>
+                      <td>{sponsor.sponsor_name}</td>
+                      <td>{sponsor.description || 'N/A'}</td>
+                      <td>
+                        <span className={`status-badge status-${status.className}`}>
+                          {status.label}
+                        </span>
+                      </td>
+                      <td>
+                        {status.canApply && (
+                          <button
+                            className="btn btn-sm btn-primary"
+                            onClick={() => handleApplyToSponsor(sponsor.sponsor_id)}
+                          >
+                            Apply
+                          </button>
+                        )}
+                        {!status.canApply && status.label === 'Pending' && (
+                          <span className="text-muted">Application pending</span>
+                        )}
+                        {!status.canApply && status.label === 'Active' && (
+                          <span className="text-success">Enrolled</span>
+                        )}
+                      </td>
+                    </tr>
+                  );
+                })}
               </tbody>
             </table>
           </div>

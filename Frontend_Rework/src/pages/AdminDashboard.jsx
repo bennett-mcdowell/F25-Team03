@@ -7,6 +7,7 @@ const AdminDashboard = () => {
   const [accounts, setAccounts] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
 
   useEffect(() => {
     fetchAccounts();
@@ -14,7 +15,9 @@ const AdminDashboard = () => {
 
   const fetchAccounts = async () => {
     try {
+      setError('');
       const data = await accountService.getAccounts();
+      console.log('Admin accounts data:', data);
       setAccounts(data.accounts || []);
     } catch (err) {
       setError('Failed to load accounts');
@@ -25,36 +28,68 @@ const AdminDashboard = () => {
   };
 
   const handleImpersonate = async (accountId) => {
+    const account = accounts.find(acc => acc.user.user_id === accountId);
+    const accountEmail = account?.user?.email || 'this user';
+    const accountRole = account?.role_name || 'user';
+    
+    if (!window.confirm(`Impersonate ${accountEmail} (${accountRole})? You will be logged in as them.`)) {
+      return;
+    }
+    
     try {
+      setError('');
       await accountService.impersonate(accountId);
-      window.location.reload(); // Reload to update user context
+      // Reload to reflect new impersonated session
+      window.location.reload();
     } catch (err) {
-      alert('Failed to impersonate user');
-      console.error(err);
+      const errorMsg = err.response?.data?.error || 'Failed to impersonate user';
+      setError(errorMsg);
+      console.error('Impersonate error:', err);
     }
   };
 
   const handleDeleteAccount = async (accountId) => {
-    if (!window.confirm('Are you sure you want to delete this account?')) {
+    // Find account details for confirmation message
+    const account = accounts.find(acc => acc.user.user_id === accountId);
+    const accountEmail = account?.user?.email || 'this account';
+    
+    if (!window.confirm(`Are you sure you want to delete ${accountEmail}? This action cannot be undone.`)) {
       return;
     }
 
     try {
+      setError('');
+      setSuccessMessage('');
+      
       await accountService.deleteAccount(accountId);
-      fetchAccounts(); // Refresh the list
+      
+      setSuccessMessage(`Account ${accountEmail} deleted successfully`);
+      
+      // Remove account from local state for immediate UI update
+      setAccounts(prevAccounts => 
+        prevAccounts.filter(acc => acc.user.user_id !== accountId)
+      );
+      
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(''), 5000);
+      
     } catch (err) {
-      alert('Failed to delete account');
-      console.error(err);
+      const errorMsg = err.response?.data?.error || 'Failed to delete account';
+      setError(errorMsg);
+      console.error('Delete error:', err);
     }
   };
 
   if (loading) return <Layout><div>Loading...</div></Layout>;
-  if (error) return <Layout><div className="error-message">{error}</div></Layout>;
 
   return (
     <Layout>
       <div className="dashboard">
         <h1>Admin Dashboard</h1>
+        
+        {error && <div className="error-message">{error}</div>}
+        {successMessage && <div className="success-message">{successMessage}</div>}
+        
         <div className="dashboard-card">
           <h2>All Accounts</h2>
           <div className="table-container">
@@ -62,7 +97,6 @@ const AdminDashboard = () => {
               <thead>
                 <tr>
                   <th>ID</th>
-                  <th>Username</th>
                   <th>Email</th>
                   <th>Name</th>
                   <th>Role</th>
@@ -72,36 +106,37 @@ const AdminDashboard = () => {
               </thead>
               <tbody>
                 {accounts.map((account) => (
-                  <tr key={account.id}>
-                    <td>{account.id}</td>
-                    <td>{account.username}</td>
-                    <td>{account.email}</td>
+                  <tr key={account.user.user_id}>
+                    <td>{account.user.user_id}</td>
+                    <td>{account.user.email}</td>
                     <td>
-                      {account.first_name} {account.last_name}
+                      {account.user.first_name} {account.user.last_name}
                     </td>
                     <td>
-                      <span className={`role-badge role-${account.role}`}>
-                        {account.role}
+                      <span className={`role-badge role-${account.role_name}`}>
+                        {account.role_name}
                       </span>
                     </td>
                     <td>
-                      <span className={`status-badge status-${account.status}`}>
-                        {account.status}
+                      <span className={`status-badge status-${account.user.status || 'active'}`}>
+                        {account.user.status || 'active'}
                       </span>
                     </td>
                     <td>
-                      <button
-                        className="btn btn-sm btn-secondary"
-                        onClick={() => handleImpersonate(account.id)}
-                      >
-                        Impersonate
-                      </button>
-                      <button
-                        className="btn btn-sm btn-danger"
-                        onClick={() => handleDeleteAccount(account.id)}
-                      >
-                        Delete
-                      </button>
+                      <div className="action-buttons">
+                        <button
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => handleImpersonate(account.user.user_id)}
+                        >
+                          Impersonate
+                        </button>
+                        <button
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleDeleteAccount(account.user.user_id)}
+                        >
+                          Delete
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}

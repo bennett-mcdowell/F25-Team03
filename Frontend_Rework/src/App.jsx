@@ -3,10 +3,14 @@ import { AuthProvider } from './contexts/AuthContext';
 import ProtectedRoute from './components/ProtectedRoute';
 import Login from './pages/Login';
 import Register from './pages/Register';
+import PasswordReset from './pages/PasswordReset';
 import AdminDashboard from './pages/AdminDashboard';
 import SponsorDashboard from './pages/SponsorDashboard';
 import DriverDashboard from './pages/DriverDashboard';
+import Market from './pages/Market';
+import Cart from './pages/Cart';
 import About from './pages/About';
+import Account from './pages/Account';
 
 function App() {
   return (
@@ -15,6 +19,7 @@ function App() {
         <Routes>
           <Route path="/login" element={<Login />} />
           <Route path="/register" element={<Register />} />
+          <Route path="/reset-password" element={<PasswordReset />} />
           
           <Route
             path="/admin"
@@ -51,6 +56,26 @@ function App() {
               </ProtectedRoute>
             }
           />
+          
+          <Route
+            path="/account"
+            element={
+              <ProtectedRoute>
+                <Account />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/market"
+            element={
+              <ProtectedRoute>
+                <Market />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
           
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>
