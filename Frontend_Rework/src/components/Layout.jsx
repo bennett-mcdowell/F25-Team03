@@ -74,7 +74,7 @@ const Layout = ({ children }) => {
       )}
       <nav className="sidebar">
         <div className="sidebar-header">
-          <h2>Team Driver Rewards</h2>
+          <h2>Driver Incentive Program</h2>
         </div>
         <ul className="sidebar-menu">
           <li>
@@ -83,15 +83,12 @@ const Layout = ({ children }) => {
           {user?.role_name?.toLowerCase() === 'admin' && (
             <>
               <li>
-                <Link to="/admin/accounts">Accounts</Link>
+                
               </li>
             </>
           )}
           {user?.role_name?.toLowerCase() === 'sponsor' && (
             <>
-              <li>
-                <Link to="/sponsor/drivers">Drivers</Link>
-              </li>
               <li>
                 <Link to="/sponsor/catalog">Catalog</Link>
               </li>
@@ -111,10 +108,10 @@ const Layout = ({ children }) => {
             </>
           )}
           <li>
-            <Link to="/about">About</Link>
+            <Link to="/account">Account</Link>
           </li>
           <li>
-            <Link to="/account">Account</Link>
+            <Link to="/about">About</Link>
           </li>
           <li>
             <button onClick={handleLogout} className="logout-btn">

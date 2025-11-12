@@ -2177,8 +2177,8 @@ def get_account_detail(user_id):
 # Update account details (with permission check)
 @account_bp.route("/api/admin/account/<int:user_id>", methods=["PUT"])
 @token_required
-def update_account(user_id):
-    """Update user account information"""
+def admin_update_account(user_id):
+    """Update user account information (admin endpoint)"""
     from flask import g
     
     # Use the existing helper function

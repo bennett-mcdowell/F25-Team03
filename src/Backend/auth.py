@@ -351,80 +351,82 @@ def require_role(required):
 # =========================
 # IMPERSONATION ENDPOINTS
 # =========================
+# NOTE: Impersonation endpoints have been moved to account.py
+# The endpoints below are deprecated and commented out to avoid conflicts
 
-@auth_bp.route("/admin/impersonate", methods=["POST"])
-@token_required
-@require_role("admin")
-def admin_impersonate():
-    admin_user_id = g.decoded_token.get("user_id") or g.decoded_token.get("sub")
-    
-    data = request.get_json() or {}
-    target_user_id = data.get("user_id")
-    
-    if not target_user_id:
-        return jsonify({"error": "Missing user_id"}), 400
-    
-    try:
-        target_user_id = int(target_user_id)
-    except Exception:
-        return jsonify({"error": "Invalid user_id"}), 400
-    
-    conn = None
-    cur = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor(dictionary=True)
-        
-        # Get target user details
-        cur.execute("""
-            SELECT u.user_id, u.first_name, u.last_name, u.email, u.type_id, ut.type_name
-            FROM `user` u
-            LEFT JOIN user_type ut ON u.type_id = ut.type_id
-            WHERE u.user_id = %s
-        """, (target_user_id,))
-        
-        user = cur.fetchone()
-        if not user:
-            return jsonify({"error": "User not found"}), 404
-        
-        # Map type_id to role
-        role_map = {1: 'admin', 2: 'sponsor', 3: 'driver'}
-        role = role_map.get(user['type_id'], 'user')
-        
-        # Create impersonation token (30 min expiry for security)
-        impersonation_token = create_access_token(
-            identity=str(target_user_id),
-            additional_claims={
-                'role': role,
-                'user_id': target_user_id,
-                'username': user['email'],
-                'impersonated_by': admin_user_id,  # Track who is impersonating
-                'is_impersonation': True
-            },
-            expires_delta=datetime.timedelta(minutes=30)
-        )
-        
-        logger.info(f"Admin {admin_user_id} generated impersonation token for user {target_user_id} ({role})")
-        
-        return jsonify({
-            "token": impersonation_token,
-            "user_info": {
-                "user_id": user['user_id'],
-                "first_name": user['first_name'],
-                "last_name": user['last_name'],
-                "email": user['email'],
-                "role": role
-            }
-        }), 200
-        
-    except Exception as e:
-        logger.error(f"Error in admin impersonation: {e}")
-        return jsonify({"error": str(e)}), 500
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
+# @auth_bp.route("/admin/impersonate", methods=["POST"])
+# @token_required
+# @require_role("admin")
+# def admin_impersonate():
+#     admin_user_id = g.decoded_token.get("user_id") or g.decoded_token.get("sub")
+#     
+#     data = request.get_json() or {}
+#     target_user_id = data.get("user_id")
+#     
+#     if not target_user_id:
+#         return jsonify({"error": "Missing user_id"}), 400
+#     
+#     try:
+#         target_user_id = int(target_user_id)
+#     except Exception:
+#         return jsonify({"error": "Invalid user_id"}), 400
+#     
+#     conn = None
+#     cur = None
+#     try:
+#         conn = get_db_connection()
+#         cur = conn.cursor(dictionary=True)
+#         
+#         # Get target user details
+#         cur.execute("""
+#             SELECT u.user_id, u.first_name, u.last_name, u.email, u.type_id, ut.type_name
+#             FROM `user` u
+#             LEFT JOIN user_type ut ON u.type_id = ut.type_id
+#             WHERE u.user_id = %s
+#         """, (target_user_id,))
+#         
+#         user = cur.fetchone()
+#         if not user:
+#             return jsonify({"error": "User not found"}), 404
+#         
+#         # Map type_id to role
+#         role_map = {1: 'admin', 2: 'sponsor', 3: 'driver'}
+#         role = role_map.get(user['type_id'], 'user')
+#         
+#         # Create impersonation token (30 min expiry for security)
+#         impersonation_token = create_access_token(
+#             identity=str(target_user_id),
+#             additional_claims={
+#                 'role': role,
+#                 'user_id': target_user_id,
+#                 'username': user['email'],
+#                 'impersonated_by': admin_user_id,  # Track who is impersonating
+#                 'is_impersonation': True
+#             },
+#             expires_delta=datetime.timedelta(minutes=30)
+#         )
+#         
+#         logger.info(f"Admin {admin_user_id} generated impersonation token for user {target_user_id} ({role})")
+#         
+#         return jsonify({
+#             "token": impersonation_token,
+#             "user_info": {
+#                 "user_id": user['user_id'],
+#                 "first_name": user['first_name'],
+#                 "last_name": user['last_name'],
+#                 "email": user['email'],
+#                 "role": role
+#             }
+#         }), 200
+#         
+#     except Exception as e:
+#         logger.error(f"Error in admin impersonation: {e}")
+#         return jsonify({"error": str(e)}), 500
+#     finally:
+#         if cur:
+#             cur.close()
+#         if conn:
+#             conn.close()
 
 
 @auth_bp.route("/sponsor/impersonate-driver", methods=["POST"])

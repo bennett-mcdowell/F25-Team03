@@ -98,8 +98,8 @@ const Register = () => {
     <div className="auth-container">
       <div className="auth-box">
         <h1>Register</h1>
-  {error && <div className="error-message">{error}</div>}
-  {success && <div className="success-message">{success}</div>}
+        {error && <div className="error-message">{error}</div>}
+        {success && <div className="success-message">{success}</div>}
         <form onSubmit={step === 1 ? handleNext : handleSubmit}>
           {step === 1 ? (
             <>

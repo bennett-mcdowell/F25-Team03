@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
+import EditUserModal from '../components/EditUserModal';
 import { accountService } from '../services/apiService';
 import '../styles/Dashboard.css';
 
@@ -8,6 +9,7 @@ const AdminDashboard = () => {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
+  const [editingUser, setEditingUser] = useState(null);
 
   useEffect(() => {
     fetchAccounts();
@@ -45,6 +47,36 @@ const AdminDashboard = () => {
       const errorMsg = err.response?.data?.error || 'Failed to impersonate user';
       setError(errorMsg);
       console.error('Impersonate error:', err);
+    }
+  };
+
+  const handleEditUser = (account) => {
+    setEditingUser(account);
+  };
+
+  const handleSaveUser = async (userId, formData) => {
+    try {
+      setError('');
+      setSuccessMessage('');
+      
+      await accountService.updateAccount(userId, formData);
+      
+      setSuccessMessage('User updated successfully');
+      
+      // Refresh accounts list
+      await fetchAccounts();
+      
+      // Close modal
+      setEditingUser(null);
+      
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(''), 5000);
+      
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || 'Failed to update user';
+      setError(errorMsg);
+      console.error('Update error:', err);
+      throw err;
     }
   };
 
@@ -125,6 +157,12 @@ const AdminDashboard = () => {
                     <td>
                       <div className="action-buttons">
                         <button
+                          className="btn btn-sm btn-primary"
+                          onClick={() => handleEditUser(account)}
+                        >
+                          Edit
+                        </button>
+                        <button
                           className="btn btn-sm btn-secondary"
                           onClick={() => handleImpersonate(account.user.user_id)}
                         >
@@ -145,6 +183,14 @@ const AdminDashboard = () => {
           </div>
         </div>
       </div>
+      
+      {editingUser && (
+        <EditUserModal
+          user={editingUser}
+          onClose={() => setEditingUser(null)}
+          onSave={handleSaveUser}
+        />
+      )}
     </Layout>
   );
 };

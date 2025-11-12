@@ -24,8 +24,8 @@ const SponsorDashboard = () => {
       const driversData = await sponsorService.getActiveDrivers();
       console.log('Sponsor data:', driversData);
       setActiveDrivers(driversData.drivers || []);
-  const pendingRes = await sponsorService.getPendingDrivers();
-  setPendingDrivers(pendingRes.pending_drivers || []);
+      const pendingRes = await sponsorService.getPendingDrivers();
+      setPendingDrivers(pendingRes.pending_drivers || []);
     } catch (err) {
       setError('Failed to load data');
       console.error(err);
@@ -71,20 +71,6 @@ const SponsorDashboard = () => {
       alert(`Successfully ${pointsForm.action === 'add' ? 'added' : 'deducted'} ${points} points`);
     } catch (err) {
       alert(`Failed to ${pointsForm.action} points: ${err.response?.data?.error || err.message}`);
-      console.error(err);
-    }
-  };
-
-  const handleSubtractPoints = async (driverId, points) => {
-    const reason = prompt('Enter reason for subtracting points:');
-    if (!reason) return;
-
-    try {
-      await sponsorService.subtractPoints(driverId, points, reason);
-      await fetchData();
-      alert(`Successfully deducted ${points} points`);
-    } catch (err) {
-      alert(`Failed to subtract points: ${err.response?.data?.error || err.message}`);
       console.error(err);
     }
   };

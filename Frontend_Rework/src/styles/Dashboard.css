@@ -256,21 +256,33 @@ tbody tr:hover {
 }
 
 .btn-primary {
-  background-color: #3498db;
+  background: linear-gradient(135deg, #3498db 0%, #2980b9 100%);
   color: white;
+  border: none;
 }
 
-.btn-primary:hover {
-  background-color: #2980b9;
+.btn-primary:hover:not(:disabled) {
+  background: linear-gradient(135deg, #2980b9 0%, #21618c 100%);
+}
+
+.btn-primary:disabled {
+  background: #bdc3c7;
+  cursor: not-allowed;
 }
 
 .btn-secondary {
-  background-color: #95a5a6;
+  background: #95a5a6;
   color: white;
+  border: none;
 }
 
-.btn-secondary:hover {
-  background-color: #7f8c8d;
+.btn-secondary:hover:not(:disabled) {
+  background: #7f8c8d;
+}
+
+.btn-secondary:disabled {
+  background: #d5dbdb;
+  cursor: not-allowed;
 }
 
 .btn-success {
@@ -390,13 +402,30 @@ tbody tr:hover {
 .form-actions {
   display: flex;
   gap: 12px;
-  margin-top: 10px;
+  margin-top: 24px;
+  padding-top: 20px;
+  border-top: 1px solid #ecf0f1;
 }
 
 .form-actions .btn {
   flex: 1;
   padding: 12px 24px;
   font-size: 1rem;
+  font-weight: 600;
+  border-radius: 6px;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.form-actions .btn:hover:not(:disabled) {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.form-actions .btn:disabled {
+  opacity: 0.6;
+  cursor: not-allowed;
+  transform: none;
 }
 
 .text-muted {
@@ -698,6 +727,7 @@ tbody tr:hover {
   font-weight: 600;
   display: -webkit-box;
   -webkit-line-clamp: 2;
+  line-clamp: 2;
   -webkit-box-orient: vertical;
   overflow: hidden;
   min-height: 2.4em;
@@ -777,20 +807,37 @@ tbody tr:hover {
 .error-message {
   background: #fee;
   color: #e74c3c;
-  padding: 20px;
+  padding: 16px 20px;
   border-radius: 8px;
   border-left: 4px solid #e74c3c;
   margin: 20px 0;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(231, 76, 60, 0.1);
+  animation: slideIn 0.3s ease-out;
 }
 
 /* Success Message */
 .success-message {
   background: #d4edda;
   color: #155724;
-  padding: 20px;
+  padding: 16px 20px;
   border-radius: 8px;
   border-left: 4px solid #28a745;
   margin: 20px 0;
+  font-weight: 500;
+  box-shadow: 0 2px 4px rgba(40, 167, 69, 0.1);
+  animation: slideIn 0.3s ease-out;
+}
+
+@keyframes slideIn {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
 }
 
 /* Responsive Design */
@@ -841,7 +888,38 @@ tbody tr:hover {
   display: flex;
   justify-content: space-between;
   align-items: center;
-  margin-bottom: 20px;
+  margin-bottom: 24px;
+  padding-bottom: 16px;
+  border-bottom: 2px solid #ecf0f1;
+}
+
+.card-header h2 {
+  margin: 0;
+  color: #2c3e50;
+  font-size: 1.5rem;
+  font-weight: 600;
+}
+
+.card-header .btn {
+  margin-right: 0;
+  padding: 8px 16px;
+  font-size: 0.9rem;
+  min-width: auto;
+  width: auto;
+  white-space: nowrap;
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.1);
+  transition: all 0.2s ease;
+}
+
+.card-header .btn:hover {
+  transform: translateY(-2px);
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0.15);
+}
+
+.edit-btn span {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
 }
 
 .account-form {

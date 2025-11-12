@@ -96,7 +96,21 @@ const Account = () => {
   if (!user) {
     return (
       <Layout>
-        <div>Loading...</div>
+        <div className="dashboard">
+          <div>Loading...</div>
+        </div>
+      </Layout>
+    );
+  }
+
+  // Additional safety check
+  if (!user.user) {
+    console.error('Account page - user.user is missing:', user);
+    return (
+      <Layout>
+        <div className="dashboard">
+          <div className="error-message">Unable to load user profile data</div>
+        </div>
       </Layout>
     );
   }
@@ -114,8 +128,8 @@ const Account = () => {
           <div className="card-header">
             <h2>Profile Information</h2>
             {!isEditing && (
-              <button className="btn btn-primary" onClick={handleEdit}>
-                Edit Profile
+              <button className="btn btn-primary edit-btn" onClick={handleEdit}>
+                <span>Edit Profile</span>
               </button>
             )}
           </div>
@@ -256,40 +270,48 @@ const Account = () => {
         </div>
 
         {/* Role-Specific Information */}
-        {user.role_name === 'Driver' && user.role?.sponsors && user.role.sponsors.length > 0 && (
+        {user.role_name === 'Driver' && (
           <div className="dashboard-card">
             <h2>Sponsor Relationships</h2>
-            <div className="table-container">
-              <table>
-                <thead>
-                  <tr>
-                    <th>Sponsor</th>
-                    <th>Description</th>
-                    <th>Balance</th>
-                    <th>Status</th>
-                    <th>Since</th>
-                  </tr>
-                </thead>
-                <tbody>
-                  {user.role.sponsors.map((sponsor) => (
-                    <tr key={sponsor.driver_sponsor_id}>
-                      <td>{sponsor.name}</td>
-                      <td>{sponsor.description}</td>
-                      <td>${sponsor.balance?.toFixed(2) || '0.00'}</td>
-                      <td>
-                        <span className={`status-badge status-${sponsor.status?.toLowerCase()}`}>
-                          {sponsor.status}
-                        </span>
-                      </td>
-                      <td>{sponsor.since_at ? new Date(sponsor.since_at).toLocaleDateString() : 'N/A'}</td>
-                    </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
-            <div className="total-balance">
-              <strong>Total Balance: ${user.role.total_balance?.toFixed(2) || '0.00'}</strong>
-            </div>
+            {user.role?.sponsors && user.role.sponsors.length > 0 ? (
+              <>
+                <div className="table-container">
+                  <table>
+                    <thead>
+                      <tr>
+                        <th>Sponsor</th>
+                        <th>Description</th>
+                        <th>Points</th>
+                        <th>Status</th>
+                        <th>Since</th>
+                      </tr>
+                    </thead>
+                    <tbody>
+                      {user.role.sponsors.map((sponsor) => (
+                        <tr key={sponsor.driver_sponsor_id}>
+                          <td>{sponsor.name}</td>
+                          <td>{sponsor.description}</td>
+                          <td>{parseFloat(sponsor.balance || 0).toFixed(2)}</td>
+                          <td>
+                            <span className={`status-badge status-${sponsor.status?.toLowerCase()}`}>
+                              {sponsor.status}
+                            </span>
+                          </td>
+                          <td>{sponsor.since_at ? new Date(sponsor.since_at).toLocaleDateString() : 'N/A'}</td>
+                        </tr>
+                      ))}
+                    </tbody>
+                  </table>
+                </div>
+                <div className="total-balance">
+                  <strong>Total Points: {parseFloat(user.role.total_balance || 0).toFixed(2)}</strong>
+                </div>
+              </>
+            ) : (
+              <div className="profile-view">
+                <p className="text-muted">You are not currently associated with any sponsors.</p>
+              </div>
+            )}
           </div>
         )}
 

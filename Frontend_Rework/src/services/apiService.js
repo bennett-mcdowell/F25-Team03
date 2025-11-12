@@ -40,7 +40,7 @@ export const accountService = {
   },
 
   updateAccount: async (accountId, updates) => {
-    const response = await api.put(`/admin/accounts/${accountId}`, updates);
+    const response = await api.put(`/admin/account/${accountId}`, updates);
     return response.data;
   },
 
