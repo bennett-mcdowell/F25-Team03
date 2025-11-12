@@ -1,4 +1,4 @@
-import { useState, useMemo } from 'react';
+import { useState, useMemo, useEffect } from 'react';
 import { useNavigate } from 'react-router-dom';
 import Layout from '../components/Layout';
 import ProductCard from '../components/ProductCard';
@@ -12,13 +12,67 @@ import '../styles/Dashboard.css';
 const Market = () => {
   const navigate = useNavigate();
   const { user } = useAuth();
-  const { products, loading: productsLoading, error: productsError } = useProducts();
-  const { addToCart, getCartItemCount } = useCart();
-  const { isHidden, hideProduct, unhideProduct } = useHiddenProducts();
   
   const [selectedCategory, setSelectedCategory] = useState('all');
   const [showHidden, setShowHidden] = useState(false);
   const [notification, setNotification] = useState(null);
+  const [selectedSponsor, setSelectedSponsor] = useState(null);
+  
+  // Get driver's sponsors if they are a driver
+  const driverSponsors = useMemo(() => {
+    if (!user || user.role_name !== 'Driver' || !user.role?.sponsors) {
+      return [];
+    }
+    return user.role.sponsors;
+  }, [user]);
+  
+  // Set default sponsor when sponsors list loads
+  useEffect(() => {
+    if (driverSponsors.length > 0 && !selectedSponsor) {
+      setSelectedSponsor(driverSponsors[0].sponsor_id.toString());
+    }
+  }, [driverSponsors, selectedSponsor]);
+  
+  // Calculate allowed categories based on selected sponsor
+  const allowedCategories = useMemo(() => {
+    if (!user || user.role_name !== 'Driver' || !user.role?.sponsors) {
+      return null;
+    }
+    
+    if (!selectedSponsor) {
+      return null;
+    }
+    
+    // Get the specific sponsor's allowed categories
+    const sponsor = user.role.sponsors.find(s => s.sponsor_id === parseInt(selectedSponsor));
+    if (!sponsor) {
+      return null;
+    }
+    
+    if (!sponsor.allowed_categories || sponsor.allowed_categories === null) {
+      return null;
+    }
+    
+    return sponsor.allowed_categories;
+  }, [user, selectedSponsor]);
+  
+  // Get point balance for selected sponsor
+  const pointBalance = useMemo(() => {
+    if (!user || !user.role) return 0;
+    
+    // For drivers
+    if (user.role_name === 'Driver' && user.role?.sponsors && selectedSponsor) {
+      // Get balance for specific sponsor
+      const sponsor = user.role.sponsors.find(s => s.sponsor_id === parseInt(selectedSponsor));
+      return Math.floor(sponsor?.balance || 0);
+    }
+    
+    return 0;
+  }, [user, selectedSponsor]);
+  
+  const { products, loading: productsLoading, error: productsError } = useProducts(allowedCategories);
+  const { addToCart, getCartItemCount } = useCart();
+  const { isHidden, hideProduct, unhideProduct } = useHiddenProducts();
 
   // Extract unique categories from products (memoized for performance)
   const categories = useMemo(() => {
@@ -33,19 +87,6 @@ const Market = () => {
       return matchesCategory && matchesHidden;
     });
   }, [products, selectedCategory, showHidden, isHidden]);
-
-  // Get user's point balance
-  const pointBalance = useMemo(() => {
-    if (!user || !user.role) return 0;
-    
-    // For drivers, sum up all sponsor balances
-    if (user.role.total_balance !== undefined) {
-      return Math.floor(user.role.total_balance);
-    }
-    
-    // Fallback
-    return 0;
-  }, [user]);
 
   // Handlers
   const handleAddToCart = (product) => {
@@ -124,10 +165,33 @@ const Market = () => {
               className="btn btn-primary cart-btn"
               onClick={handleGoToCart}
             >
-              🛒 Cart ({cartItemCount})
+              Cart ({cartItemCount})
             </button>
           </div>
         </div>
+
+        {/* Sponsor Selector for Drivers */}
+        {isDriver && driverSponsors.length > 0 && (
+          <div className="dashboard-card sponsor-selector-card">
+            <div className="sponsor-selector">
+              <label htmlFor="sponsor-select">
+                <strong>Shopping with:</strong>
+              </label>
+              <select
+                id="sponsor-select"
+                value={selectedSponsor || ''}
+                onChange={(e) => setSelectedSponsor(e.target.value)}
+                className="sponsor-select"
+              >
+                {driverSponsors.map((sponsor) => (
+                  <option key={sponsor.sponsor_id} value={sponsor.sponsor_id}>
+                    {sponsor.name} - {Math.floor(sponsor.balance || 0)} points
+                  </option>
+                ))}
+              </select>
+            </div>
+          </div>
+        )}
 
         {/* Notification */}
         {notification && (

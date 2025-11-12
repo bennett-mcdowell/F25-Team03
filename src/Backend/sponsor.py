@@ -3,6 +3,7 @@ from flask import Blueprint, jsonify, g, request
 from utils.db import get_db_connection
 from auth import token_required
 import mysql.connector
+import json
 
 sponsor_bp = Blueprint("sponsor", __name__)
 
@@ -209,6 +210,128 @@ def reject_pending_driver(driver_id):
     except mysql.connector.Error as e:
         conn.rollback()
         return jsonify({"error": "Database error", "details": str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
+
+@sponsor_bp.route("/api/sponsor/catalog/filters", methods=["GET"])
+@token_required
+def get_catalog_filters():
+    """
+    Get the sponsor's catalog filter settings (allowed categories).
+    Returns: { allowed_categories: string[] | null }
+    - null means all categories are allowed
+    - [] means no categories allowed (disabled catalog)
+    - ['electronics', 'jewelery'] means only those categories
+    """
+    sponsor_user_id = _claims_user_id()
+    if not sponsor_user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        cur.execute(
+            "SELECT allowed_categories FROM sponsor WHERE user_id = %s",
+            (sponsor_user_id,)
+        )
+        sponsor = cur.fetchone()
+        if not sponsor:
+            return jsonify({"error": "Forbidden: not a sponsor"}), 403
+
+        # Parse JSON if present
+        allowed_categories = sponsor.get("allowed_categories")
+        if allowed_categories:
+            try:
+                allowed_categories = json.loads(allowed_categories)
+            except (json.JSONDecodeError, TypeError):
+                allowed_categories = None  # Invalid JSON, treat as "all allowed"
+
+        return jsonify({
+            "allowed_categories": allowed_categories
+        }), 200
+
+    except mysql.connector.Error as e:
+        return jsonify({"error": "DB error", "details": str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
+
+@sponsor_bp.route("/api/sponsor/catalog/filters", methods=["PUT"])
+@token_required
+def update_catalog_filters():
+    """
+    Update the sponsor's catalog filter settings.
+    Body: { allowed_categories: string[] | null }
+    - null = allow all categories
+    - [] = allow no categories
+    - ['electronics'] = only allow electronics
+    """
+    sponsor_user_id = _claims_user_id()
+    if not sponsor_user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    allowed_categories = data.get("allowed_categories")
+
+    # Validate input
+    if allowed_categories is not None and not isinstance(allowed_categories, list):
+        return jsonify({"error": "allowed_categories must be an array or null"}), 400
+
+    # Valid categories from Fake Store API
+    VALID_CATEGORIES = ["electronics", "jewelery", "men's clothing", "women's clothing"]
+    
+    if allowed_categories is not None:
+        for cat in allowed_categories:
+            if cat not in VALID_CATEGORIES:
+                return jsonify({
+                    "error": f"Invalid category: {cat}",
+                    "valid_categories": VALID_CATEGORIES
+                }), 400
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # Get sponsor_id
+        cur.execute(
+            "SELECT sponsor_id FROM sponsor WHERE user_id = %s",
+            (sponsor_user_id,)
+        )
+        sponsor = cur.fetchone()
+        if not sponsor:
+            return jsonify({"error": "Forbidden: not a sponsor"}), 403
+
+        # Convert to JSON string or NULL
+        categories_json = json.dumps(allowed_categories) if allowed_categories is not None else None
+
+        # Update the sponsor record
+        cur.execute(
+            """
+            UPDATE sponsor
+            SET allowed_categories = %s
+            WHERE user_id = %s
+            """,
+            (categories_json, sponsor_user_id)
+        )
+
+        conn.commit()
+
+        return jsonify({
+            "message": "Catalog filters updated successfully",
+            "allowed_categories": allowed_categories
+        }), 200
+
+    except mysql.connector.Error as e:
+        conn.rollback()
+        return jsonify({"error": "DB error", "details": str(e)}), 500
     finally:
         if cur:
             cur.close()

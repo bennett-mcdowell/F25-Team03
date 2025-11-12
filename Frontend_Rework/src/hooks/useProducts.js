@@ -1,13 +1,14 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 
-export const useProducts = () => {
-  const [products, setProducts] = useState(() => {
+export const useProducts = (allowedCategories = null) => {
+  const [allProducts, setAllProducts] = useState(() => {
     const cached = localStorage.getItem('products');
     return cached ? JSON.parse(cached) : [];
   });
-  const [loading, setLoading] = useState(products.length === 0);
+  const [loading, setLoading] = useState(allProducts.length === 0);
   const [error, setError] = useState(null);
 
+  // Fetch all products from Fake Store API
   useEffect(() => {
     let isMounted = true;
     const fetchProducts = async () => {
@@ -18,8 +19,8 @@ export const useProducts = () => {
         }
         const data = await response.json();
 
-        if (isMounted && JSON.stringify(data) !== JSON.stringify(products)) {
-          setProducts(data);
+        if (isMounted && JSON.stringify(data) !== JSON.stringify(allProducts)) {
+          setAllProducts(data);
           localStorage.setItem('products', JSON.stringify(data));
         }
         setError(null);
@@ -34,5 +35,25 @@ export const useProducts = () => {
     return () => { isMounted = false; };
   }, []);
 
-  return { products, loading, error };
+    // Filter products based on allowed categories
+  const filteredProducts = useMemo(() => {
+    // If no filter (null), show all products
+    if (!allowedCategories) {
+      return allProducts;
+    }
+    
+    // If empty array, show no products
+    if (allowedCategories.length === 0) {
+      return [];
+    }
+    
+    // Filter products by allowed categories
+    const filtered = allProducts.filter(product => 
+      allowedCategories.includes(product.category)
+    );
+    
+    return filtered;
+  }, [allProducts, allowedCategories]);
+
+  return { products: filteredProducts, loading, error };
 };

@@ -97,9 +97,6 @@ const Layout = ({ children }) => {
           {user?.role_name?.toLowerCase() === 'driver' && (
             <>
               <li>
-                <Link to="/driver/sponsors">Sponsors</Link>
-              </li>
-              <li>
                 <Link to="/market">Market</Link>
               </li>
               <li>

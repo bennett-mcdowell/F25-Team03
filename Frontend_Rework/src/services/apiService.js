@@ -108,6 +108,20 @@ export const sponsorService = {
     const response = await api.post('/sponsor/impersonate', { account_id: accountId });
     return response.data;
   },
+
+  // Get catalog filter settings (allowed categories)
+  getCatalogFilters: async () => {
+    const response = await api.get('/sponsor/catalog/filters');
+    return response.data;
+  },
+
+  // Update catalog filter settings (allowed categories)
+  updateCatalogFilters: async (allowedCategories) => {
+    const response = await api.put('/sponsor/catalog/filters', {
+      allowed_categories: allowedCategories,
+    });
+    return response.data;
+  },
 };
 
 export const driverService = {

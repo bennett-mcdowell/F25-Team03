@@ -111,13 +111,23 @@ def account_api():
                             ds.until_at,
                             s.sponsor_id,
                             s.name,
-                            s.description
+                            s.description,
+                            s.allowed_categories
                         FROM driver_sponsor ds
                         JOIN sponsor s  ON s.sponsor_id = ds.sponsor_id
                         WHERE ds.driver_id = %s
                         ORDER BY s.name
                     """, (driver_id,))
                     sponsors = cur.fetchall() or []
+
+                    # Parse allowed_categories JSON for each sponsor
+                    import json
+                    for sponsor in sponsors:
+                        if sponsor.get('allowed_categories'):
+                            try:
+                                sponsor['allowed_categories'] = json.loads(sponsor['allowed_categories'])
+                            except (json.JSONDecodeError, TypeError):
+                                sponsor['allowed_categories'] = None
 
                     # 3) Attach to response + total balance
                     role_blob["sponsors"] = sponsors
@@ -1457,16 +1467,28 @@ def driver_sponsors_api():
         # Get all sponsors and balances
         cur.execute("""
             SELECT
+                ds.driver_sponsor_id,
                 s.sponsor_id,
-                s.name AS sponsor_name,
+                s.name,
                 s.description,
-                ds.balance
+                s.allowed_categories,
+                ds.balance,
+                ds.since_at
             FROM driver_sponsor ds
             JOIN sponsor s ON s.sponsor_id = ds.sponsor_id
             WHERE ds.driver_id = %s AND ds.status = 'ACTIVE'
             ORDER BY s.name
         """, (driver_id,))
         sponsors = cur.fetchall() or []
+
+        # Parse allowed_categories JSON for each sponsor
+        import json
+        for sponsor in sponsors:
+            if sponsor.get('allowed_categories'):
+                try:
+                    sponsor['allowed_categories'] = json.loads(sponsor['allowed_categories'])
+                except (json.JSONDecodeError, TypeError):
+                    sponsor['allowed_categories'] = None
 
         total_points = float(sum((row.get("balance") or 0) for row in sponsors))
 

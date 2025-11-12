@@ -6,6 +6,7 @@ import Register from './pages/Register';
 import PasswordReset from './pages/PasswordReset';
 import AdminDashboard from './pages/AdminDashboard';
 import SponsorDashboard from './pages/SponsorDashboard';
+import SponsorCatalog from './pages/SponsorCatalog';
 import DriverDashboard from './pages/DriverDashboard';
 import Market from './pages/Market';
 import Cart from './pages/Cart';
@@ -35,6 +36,15 @@ function App() {
             element={
               <ProtectedRoute allowedRoles={['sponsor']}>
                 <SponsorDashboard />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/sponsor/catalog"
+            element={
+              <ProtectedRoute allowedRoles={['sponsor']}>
+                <SponsorCatalog />
               </ProtectedRoute>
             }
           />
