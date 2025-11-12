@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import EditUserModal from '../components/EditUserModal';
+import BulkUpload from '../components/BulkUpload';
 import { accountService } from '../services/apiService';
 import '../styles/Dashboard.css';
 
@@ -182,6 +183,9 @@ const AdminDashboard = () => {
             </table>
           </div>
         </div>
+
+        {/* Bulk Upload Section */}
+        <BulkUpload userRole="Admin" />
       </div>
       
       {editingUser && (

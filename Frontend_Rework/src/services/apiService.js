@@ -60,6 +60,21 @@ export const accountService = {
   },
 };
 
+export const adminService = {
+  // Bulk upload accounts (organizations, sponsors, drivers)
+  bulkUploadAccounts: async (file) => {
+    const formData = new FormData();
+    formData.append('file', file);
+
+    const response = await api.post('/admin/bulk_accounts', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
+    });
+    return response.data;
+  },
+};
+
 export const sponsorService = {
   // Get sponsor's active drivers - uses /api/sponsor/accounts
   getActiveDrivers: async () => {
@@ -117,8 +132,22 @@ export const sponsorService = {
 
   // Update catalog filter settings (allowed categories)
   updateCatalogFilters: async (allowedCategories) => {
-    const response = await api.put('/sponsor/catalog/filters', {
+    const response = await api.post('/sponsor/catalog/filters', {
       allowed_categories: allowedCategories,
+    });
+    return response.data;
+  },
+
+  // Bulk upload drivers
+  bulkUploadDrivers: async (file, dryRun = true) => {
+    const formData = new FormData();
+    formData.append('file', file);
+    formData.append('dry_run', dryRun ? '1' : '0');
+
+    const response = await api.post('/sponsor/bulk_drivers', formData, {
+      headers: {
+        'Content-Type': 'multipart/form-data',
+      },
     });
     return response.data;
   },

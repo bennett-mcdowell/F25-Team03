@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
+import BulkUpload from '../components/BulkUpload';
 import { sponsorService, accountService } from '../services/apiService';
 import '../styles/Dashboard.css';
 
@@ -288,6 +289,9 @@ const SponsorDashboard = () => {
             </div>
           </form>
         </div>
+
+        {/* Bulk Upload Section */}
+        <BulkUpload userRole="Sponsor" />
       </div>
     </Layout>
   );
