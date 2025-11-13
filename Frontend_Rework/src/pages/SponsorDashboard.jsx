@@ -1,6 +1,7 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import BulkUpload from '../components/BulkUpload';
+import CreateUserModal from '../components/CreateUserModal';
 import { sponsorService, accountService } from '../services/apiService';
 import '../styles/Dashboard.css';
 
@@ -9,6 +10,8 @@ const SponsorDashboard = () => {
   const [pendingDrivers, setPendingDrivers] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState('');
+  const [successMessage, setSuccessMessage] = useState('');
+  const [showCreateSponsorUserModal, setShowCreateSponsorUserModal] = useState(false);
   const [pointsForm, setPointsForm] = useState({
     driverId: '',
     points: '',
@@ -76,6 +79,26 @@ const SponsorDashboard = () => {
     }
   };
 
+  const handleCreateSponsorUser = async (userData) => {
+    try {
+      setError('');
+      setSuccessMessage('');
+      
+      await sponsorService.createSponsorUser(userData);
+      
+      setSuccessMessage('Sponsor user created successfully');
+      
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(''), 5000);
+      
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || 'Failed to create sponsor user';
+      setError(errorMsg);
+      console.error('Create sponsor user error:', err);
+      throw new Error(errorMsg);
+    }
+  };
+
   const handleImpersonate = async (accountId) => {
     const driver = activeDrivers.find(d => d.user_id === accountId);
     const driverName = driver ? `${driver.first_name} ${driver.last_name}` : 'this driver';
@@ -103,6 +126,21 @@ const SponsorDashboard = () => {
     <Layout>
       <div className="dashboard">
         <h1>Sponsor Dashboard</h1>
+
+        {error && <div className="error-message">{error}</div>}
+        {successMessage && <div className="success-message">{successMessage}</div>}
+
+        {/* Create Sponsor User Section */}
+        <div className="dashboard-card">
+          <h2>Manage Sponsor Users</h2>
+          <p>Create additional sponsor users for your organization (self-managed, no application process required)</p>
+          <button 
+            className="btn btn-primary"
+            onClick={() => setShowCreateSponsorUserModal(true)}
+          >
+            + Create Sponsor User
+          </button>
+        </div>
 
         {/* Active Drivers */}
         <div className="dashboard-card">
@@ -293,6 +331,15 @@ const SponsorDashboard = () => {
         {/* Bulk Upload Section */}
         <BulkUpload userRole="Sponsor" />
       </div>
+
+      {/* Create Sponsor User Modal */}
+      <CreateUserModal
+        isOpen={showCreateSponsorUserModal}
+        onClose={() => setShowCreateSponsorUserModal(false)}
+        onSubmit={handleCreateSponsorUser}
+        userType="sponsor"
+        allowedTypes={['sponsor']}
+      />
     </Layout>
   );
 };

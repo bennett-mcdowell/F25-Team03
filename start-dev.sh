@@ -45,4 +45,4 @@ wait
 echo ""
 echo "Stopping servers..."
 docker stop flask-backend
-echo "✅ Stopped!"
+echo "Stopped!"

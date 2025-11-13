@@ -1,8 +1,9 @@
 import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import EditUserModal from '../components/EditUserModal';
+import CreateUserModal from '../components/CreateUserModal';
 import BulkUpload from '../components/BulkUpload';
-import { accountService } from '../services/apiService';
+import { accountService, adminService } from '../services/apiService';
 import '../styles/Dashboard.css';
 
 const AdminDashboard = () => {
@@ -11,6 +12,7 @@ const AdminDashboard = () => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [editingUser, setEditingUser] = useState(null);
+  const [showCreateUserModal, setShowCreateUserModal] = useState(false);
 
   useEffect(() => {
     fetchAccounts();
@@ -113,6 +115,29 @@ const AdminDashboard = () => {
     }
   };
 
+  const handleCreateUser = async (userData) => {
+    try {
+      setError('');
+      setSuccessMessage('');
+      
+      await adminService.createUser(userData);
+      
+      setSuccessMessage(`${userData.user_type.charAt(0).toUpperCase() + userData.user_type.slice(1)} created successfully`);
+      
+      // Refresh accounts list
+      await fetchAccounts();
+      
+      // Auto-clear success message after 5 seconds
+      setTimeout(() => setSuccessMessage(''), 5000);
+      
+    } catch (err) {
+      const errorMsg = err.response?.data?.error || 'Failed to create user';
+      setError(errorMsg);
+      console.error('Create user error:', err);
+      throw new Error(errorMsg);
+    }
+  };
+
   if (loading) return <Layout><div>Loading...</div></Layout>;
 
   return (
@@ -122,6 +147,18 @@ const AdminDashboard = () => {
         
         {error && <div className="error-message">{error}</div>}
         {successMessage && <div className="success-message">{successMessage}</div>}
+        
+        {/* User Creation Section */}
+        <div className="dashboard-card">
+          <h2>Create New User</h2>
+          <p>Create new admin, driver, or sponsor accounts</p>
+          <button 
+            className="btn btn-primary"
+            onClick={() => setShowCreateUserModal(true)}
+          >
+            + Create New User
+          </button>
+        </div>
         
         <div className="dashboard-card">
           <h2>All Accounts</h2>
@@ -187,6 +224,14 @@ const AdminDashboard = () => {
         {/* Bulk Upload Section */}
         <BulkUpload userRole="Admin" />
       </div>
+      
+      {/* Create User Modal */}
+      <CreateUserModal
+        isOpen={showCreateUserModal}
+        onClose={() => setShowCreateUserModal(false)}
+        onSubmit={handleCreateUser}
+        allowedTypes={['admin', 'driver', 'sponsor']}
+      />
       
       {editingUser && (
         <EditUserModal

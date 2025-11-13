@@ -2374,4 +2374,84 @@ def reset_user_password(user_id):
     finally:
         if cur:
             cur.close()
+        if conn:
+            conn.close()
+
+
+# =====================================================================
+# USER CREATION ENDPOINTS
+# =====================================================================
+
+@account_bp.route('/api/admin/users', methods=['POST'])
+@token_required
+@require_role('admin')
+def admin_create_user():
+    """
+    Admin endpoint to create users (admin, driver, or sponsor)
+    Allows admins to create any type of user
+    """
+    from user_management import UserCreationService
+    
+    user_id = _claims_user_id()
+    data = request.get_json() or {}
+    user_type = data.get('user_type')  # 'admin', 'driver', or 'sponsor'
+    
+    if user_type not in ['admin', 'driver', 'sponsor']:
+        return jsonify({"error": "Invalid user_type. Must be 'admin', 'driver', or 'sponsor'"}), 400
+    
+    # Create the user
+    new_user_id, error = UserCreationService.create_user(data, user_type, created_by_user_id=user_id)
+    
+    if error:
+        return jsonify({"error": error}), 400
+    
+    return jsonify({
+        "message": f"{user_type.capitalize()} user created successfully",
+        "user_id": new_user_id,
+        "user_type": user_type
+    }), 201
+
+
+@account_bp.route('/api/sponsor/users', methods=['POST'])
+@token_required
+@require_role('sponsor')
+def sponsor_create_user():
+    """
+    Sponsor endpoint to create additional sponsor users for their organization
+    Self-managed, no application process
+    """
+    from user_management import UserCreationService
+    
+    user_id = _claims_user_id()
+    data = request.get_json() or {}
+    
+    # Get the sponsor_id for the current user
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT sponsor_id FROM sponsor WHERE user_id = %s", (user_id,))
+        sponsor = cur.fetchone()
+        
+        if not sponsor:
+            return jsonify({"error": "Sponsor organization not found"}), 404
+        
+        sponsor_id = sponsor['sponsor_id']
         conn.close()
+        
+        # Create sponsor user for this organization
+        new_user_id, error = UserCreationService.create_sponsor_user_for_organization(data, sponsor_id)
+        
+        if error:
+            return jsonify({"error": error}), 400
+        
+        return jsonify({
+            "message": "Sponsor user created successfully",
+            "user_id": new_user_id,
+            "sponsor_id": sponsor_id
+        }), 201
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()

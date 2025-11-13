@@ -12,14 +12,7 @@
 cd Frontend_Rework
 npm install
 ```
-
-2. Make sure your Flask backend is built:
-```bash
-cd ../src
-docker build -t myapp .
-```
-
-3. Run both servers using the helper script:
+2. Run both servers using the helper script:
 ```bash
 ./start-dev.sh
 ```

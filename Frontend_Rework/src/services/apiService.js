@@ -73,6 +73,12 @@ export const adminService = {
     });
     return response.data;
   },
+
+  // Create a new user (admin, driver, or sponsor)
+  createUser: async (userData) => {
+    const response = await api.post('/admin/users', userData);
+    return response.data;
+  },
 };
 
 export const sponsorService = {
@@ -149,6 +155,12 @@ export const sponsorService = {
         'Content-Type': 'multipart/form-data',
       },
     });
+    return response.data;
+  },
+
+  // Create a new sponsor user for the organization
+  createSponsorUser: async (userData) => {
+    const response = await api.post('/sponsor/users', userData);
     return response.data;
   },
 };
