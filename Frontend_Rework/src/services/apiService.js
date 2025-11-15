@@ -98,6 +98,14 @@ export const sponsorService = {
     return response.data;
   },
 
+  // Reject a pending driver application with reason
+  rejectPendingDriver: async (driverId, reason) => {
+    const response = await api.post(`/sponsor/driver/${driverId}/reject`, {
+      reason,
+    });
+    return response.data;
+  },
+
   // Add points to a driver - uses /api/sponsor/driver/<id>/add_points
   addPoints: async (driverId, points, reason) => {
     const response = await api.post(`/sponsor/driver/${driverId}/add_points`, {
@@ -190,6 +198,77 @@ export const driverService = {
 
   getApplicationStatus: async () => {
     const response = await api.get('/driver/application-status');
+    return response.data;
+  },
+};
+
+export const alertService = {
+  // Get alert history (driver only)
+  getAlertHistory: async () => {
+    const response = await api.get('/alerts/history');
+    return response.data;
+  },
+
+  // Get alert preferences (driver only)
+  getAlertPreferences: async () => {
+    const response = await api.get('/alerts/preferences');
+    return response.data;
+  },
+
+  // Update alert preferences (driver only)
+  updateAlertPreferences: async (preferences) => {
+    const response = await api.put('/alerts/preferences', preferences);
+    return response.data;
+  },
+
+  // Mark alert as read
+  markAlertAsRead: async (alertId) => {
+    const response = await api.put(`/alerts/${alertId}/read`);
+    return response.data;
+  },
+
+  // Mark all alerts as read
+  markAllAlertsAsRead: async () => {
+    const response = await api.put('/alerts/read-all');
+    return response.data;
+  },
+};
+
+export const orderService = {
+  // Get orders (role-aware: drivers see their orders, sponsors see drivers' orders, admins see all)
+  getOrders: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.status) params.append('status', filters.status);
+    if (filters.driverId) params.append('driver_id', filters.driverId);
+    if (filters.sponsorId) params.append('sponsor_id', filters.sponsorId);
+    if (filters.startDate) params.append('start_date', filters.startDate);
+    if (filters.endDate) params.append('end_date', filters.endDate);
+
+    const response = await api.get(`/orders?${params.toString()}`);
+    return response.data;
+  },
+
+  // Get order details
+  getOrderDetails: async (orderId) => {
+    const response = await api.get(`/orders/${orderId}`);
+    return response.data;
+  },
+
+  // Cancel an order (available for PENDING or PROCESSING orders)
+  cancelOrder: async (orderId) => {
+    const response = await api.post(`/orders/${orderId}/cancel`);
+    return response.data;
+  },
+
+  // Update order (admins and sponsors can add notes, update tracking, etc.)
+  updateOrder: async (orderId, updates) => {
+    const response = await api.put(`/orders/${orderId}`, updates);
+    return response.data;
+  },
+
+  // Update order status (admin only)
+  updateOrderStatus: async (orderId, status) => {
+    const response = await api.put(`/orders/${orderId}/status`, { status });
     return response.data;
   },
 };

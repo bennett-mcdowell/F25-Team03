@@ -1,6 +1,6 @@
 /* Impersonation Banner */
 .impersonation-banner {
-  position: fixed;
+  position: sticky;
   top: 0;
   left: 0;
   right: 0;
@@ -9,6 +9,7 @@
   padding: 12px 20px;
   z-index: 1000;
   box-shadow: 0 2px 8px rgba(0, 0, 0, 0.2);
+  width: 100%;
 }
 
 .impersonation-content {
@@ -60,13 +61,13 @@
 
 .layout {
   display: flex;
+  flex-direction: column;
   min-height: 100vh;
 }
 
-/* Adjust main content when impersonating */
-.impersonation-banner ~ .sidebar,
-.impersonation-banner ~ * .main-content {
-  margin-top: 48px;
+.layout-content {
+  display: flex;
+  flex: 1;
 }
 
 .sidebar {
@@ -161,6 +162,10 @@
 }
 
 @media (max-width: 768px) {
+  .layout-content {
+    flex-direction: column;
+  }
+
   .sidebar {
     width: 100%;
     height: auto;

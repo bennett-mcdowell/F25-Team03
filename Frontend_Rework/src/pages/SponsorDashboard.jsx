@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import BulkUpload from '../components/BulkUpload';
 import CreateUserModal from '../components/CreateUserModal';
+import ConfirmationModal from '../components/ConfirmationModal';
 import { sponsorService, accountService } from '../services/apiService';
 import '../styles/Dashboard.css';
 
@@ -12,6 +13,12 @@ const SponsorDashboard = () => {
   const [error, setError] = useState('');
   const [successMessage, setSuccessMessage] = useState('');
   const [showCreateSponsorUserModal, setShowCreateSponsorUserModal] = useState(false);
+  const [showRejectModal, setShowRejectModal] = useState(false);
+  const [rejectDriverId, setRejectDriverId] = useState(null);
+  const [rejectDriverName, setRejectDriverName] = useState('');
+  const [showRemoveModal, setShowRemoveModal] = useState(false);
+  const [removeDriverId, setRemoveDriverId] = useState(null);
+  const [removeDriverName, setRemoveDriverName] = useState('');
   const [pointsForm, setPointsForm] = useState({
     driverId: '',
     points: '',
@@ -48,9 +55,31 @@ const SponsorDashboard = () => {
     }
   };
 
-  const handleRejectPendingDriver = async (driverId) => {
-    // Placeholder: implement backend endpoint for rejection if needed
-    alert('Reject functionality not yet implemented in backend.');
+  const handleRejectPendingDriver = (driver) => {
+    setRejectDriverId(driver.driver_id);
+    setRejectDriverName(`${driver.first_name} ${driver.last_name}`);
+    setShowRejectModal(true);
+  };
+
+  const confirmRejectDriver = async (reason) => {
+    try {
+      await sponsorService.rejectPendingDriver(rejectDriverId, reason);
+      setShowRejectModal(false);
+      setRejectDriverId(null);
+      setRejectDriverName('');
+      await fetchData();
+      setSuccessMessage('Driver application rejected successfully');
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      alert(`Failed to reject application: ${err.response?.data?.error || err.message}`);
+      console.error(err);
+    }
+  };
+
+  const cancelReject = () => {
+    setShowRejectModal(false);
+    setRejectDriverId(null);
+    setRejectDriverName('');
   };
 
   const handleManagePoints = async (e) => {
@@ -119,6 +148,31 @@ const SponsorDashboard = () => {
     }
   };
 
+  const handleRemoveDriver = (driverId, driverName) => {
+    setRemoveDriverId(driverId);
+    setRemoveDriverName(driverName);
+    setShowRemoveModal(true);
+  };
+
+  const confirmRemoveDriver = async (reason) => {
+    try {
+      await sponsorService.removeDriver(removeDriverId);
+      setShowRemoveModal(false);
+      await fetchData();
+      setSuccessMessage(`Driver ${removeDriverName} removed successfully`);
+      setTimeout(() => setSuccessMessage(''), 3000);
+    } catch (err) {
+      alert(`Failed to remove driver: ${err.response?.data?.error || err.message}`);
+      console.error(err);
+    }
+  };
+
+  const cancelRemoveDriver = () => {
+    setShowRemoveModal(false);
+    setRemoveDriverId(null);
+    setRemoveDriverName('');
+  };
+
   if (loading) return <Layout><div>Loading...</div></Layout>;
   if (error) return <Layout><div className="error-message">{error}</div></Layout>;
 
@@ -168,12 +222,20 @@ const SponsorDashboard = () => {
                     <td>{driver.email}</td>
                     <td>{driver.balance || 0}</td>
                     <td>
-                      <button
-                        className="btn btn-sm btn-secondary"
-                        onClick={() => handleImpersonate(driver.user_id)}
-                      >
-                        Impersonate
-                      </button>
+                      <div className="action-buttons">
+                        <button
+                          className="btn btn-sm btn-secondary"
+                          onClick={() => handleImpersonate(driver.user_id)}
+                        >
+                          Impersonate
+                        </button>
+                        <button
+                          className="btn btn-sm btn-danger"
+                          onClick={() => handleRemoveDriver(driver.driver_id, `${driver.first_name} ${driver.last_name}`)}
+                        >
+                          Remove
+                        </button>
+                      </div>
                     </td>
                   </tr>
                 ))}
@@ -214,7 +276,7 @@ const SponsorDashboard = () => {
                           </button>
                           <button
                             className="btn btn-sm btn-danger"
-                            onClick={() => handleRejectPendingDriver(driver.driver_id)}
+                            onClick={() => handleRejectPendingDriver(driver)}
                           >
                             Reject
                           </button>
@@ -339,6 +401,32 @@ const SponsorDashboard = () => {
         onSubmit={handleCreateSponsorUser}
         userType="sponsor"
         allowedTypes={['sponsor']}
+      />
+
+      {/* Reject Driver Modal */}
+      <ConfirmationModal
+        isOpen={showRejectModal}
+        onClose={cancelReject}
+        onConfirm={confirmRejectDriver}
+        title="Reject Driver Application"
+        message={`Please provide a reason for rejecting ${rejectDriverName}'s application:`}
+        confirmText="Confirm Rejection"
+        confirmButtonClass="btn-danger"
+        requireReason={true}
+        reasonLabel="Reason"
+        reasonPlaceholder="Enter reason for rejection"
+      />
+
+      {/* Remove Driver Modal */}
+      <ConfirmationModal
+        isOpen={showRemoveModal}
+        onClose={cancelRemoveDriver}
+        onConfirm={confirmRemoveDriver}
+        title="Remove Driver"
+        message={`Are you sure you want to remove ${removeDriverName} from your organization? This action will notify the driver.`}
+        confirmText="Remove Driver"
+        confirmButtonClass="btn-danger"
+        requireReason={false}
       />
     </Layout>
   );

@@ -188,12 +188,13 @@ def reject_pending_driver(driver_id):
         cur.execute(
             """
             UPDATE driver_sponsor
-            SET status = 'INACTIVE'
+            SET status = 'INACTIVE',
+                last_change_reason = %s
             WHERE driver_id = %s
               AND sponsor_id = %s
               AND status = 'PENDING'
             """,
-            (driver_id, sponsor_id)
+            (reason, driver_id, sponsor_id)
         )
 
         if cur.rowcount == 0:
@@ -201,9 +202,6 @@ def reject_pending_driver(driver_id):
             return jsonify({"error": "No pending record found for this driver"}), 404
 
         conn.commit()
-
-        # When rejection reason is added it will be here
-        print(f"Driver {driver_id} rejected by sponsor {sponsor_id}. Reason: {reason}")
 
         return jsonify({"message": "Driver rejected successfully", "reason": reason}), 200
 

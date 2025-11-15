@@ -12,6 +12,10 @@ import Market from './pages/Market';
 import Cart from './pages/Cart';
 import About from './pages/About';
 import Account from './pages/Account';
+import Inbox from './pages/Inbox';
+import Orders from './pages/Orders';
+import SponsorReports from './pages/SponsorReports';
+import AdminReports from './pages/AdminReports';
 
 function App() {
   return (
@@ -86,6 +90,42 @@ function App() {
           />
           
           <Route path="/cart" element={<ProtectedRoute><Cart /></ProtectedRoute>} />
+          
+          <Route
+            path="/inbox"
+            element={
+              <ProtectedRoute allowedRoles={['driver']}>
+                <Inbox />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/orders"
+            element={
+              <ProtectedRoute>
+                <Orders />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/sponsor/reports"
+            element={
+              <ProtectedRoute allowedRoles={['sponsor']}>
+                <SponsorReports />
+              </ProtectedRoute>
+            }
+          />
+          
+          <Route
+            path="/admin/reports"
+            element={
+              <ProtectedRoute allowedRoles={['admin']}>
+                <AdminReports />
+              </ProtectedRoute>
+            }
+          />
           
           <Route path="/" element={<Navigate to="/login" replace />} />
         </Routes>

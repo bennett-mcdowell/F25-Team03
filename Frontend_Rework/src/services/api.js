@@ -1,7 +1,7 @@
 import axios from 'axios';
 
 const api = axios.create({
-  baseURL: '/api',
+  baseURL: import.meta.env.VITE_API_URL || '/api',  // Falls back to /api (same server)
   withCredentials: true,
   headers: {
     'Content-Type': 'application/json',
