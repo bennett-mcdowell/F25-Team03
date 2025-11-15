@@ -58,36 +58,60 @@ jobs:
             npm ci --quiet
             npm run build
             
+            # Remove any old .env file (we use PM2 env vars instead)
+            echo "Cleaning up old environment files..."
+            rm -f ../src/Backend/.env
+            
             # Insert deployment record
             echo "Inserting deployment record..."
             cd ../src/Backend
-            export DB_HOST="$DB_HOST"
-            export DB_NAME="$DB_NAME"
-            export DB_USER="$DB_USER"
-            export DB_PASSWORD="$DB_PASSWORD"
             
-            if python3 insert_deployment.py; then
-              echo "Deployment record inserted successfully"
-            else
-              echo "Warning: Failed to insert deployment record (continuing anyway)"
-            fi
+            # Run insert_deployment.py with environment variables
+            DB_HOST="$DB_HOST" \
+            DB_NAME="$DB_NAME" \
+            DB_USER="$DB_USER" \
+            DB_PASSWORD="$DB_PASSWORD" \
+            python3 insert_deployment.py || echo "Warning: Failed to insert deployment record (continuing anyway)"
             
-            # Restart Flask app with PM2
+            # Create PM2 ecosystem file with environment variables
+            echo "Creating PM2 ecosystem file..."
+            cat > ecosystem.config.js << 'EOFCONFIG'
+            module.exports = {
+              apps: [{
+                name: 'flask-app',
+                script: 'app.py',
+                interpreter: 'python3',
+                cwd: '/home/ec2-user/F25-Team03/src/Backend',
+                instances: 1,
+                autorestart: true,
+                watch: false,
+                max_memory_restart: '1G',
+                env: {
+                  PORT: process.env.PORT || '5000',
+                  DB_HOST: process.env.DB_HOST,
+                  DB_NAME: process.env.DB_NAME,
+                  DB_USER: process.env.DB_USER,
+                  DB_PASSWORD: process.env.DB_PASSWORD,
+                  FRONTEND_URL: process.env.FRONTEND_URL
+                },
+                error_file: '/home/ec2-user/logs/flask-app-error.log',
+                out_file: '/home/ec2-user/logs/flask-app.log',
+                time: true
+              }]
+            };
+            EOFCONFIG
+            
+            # Restart Flask app with PM2 using ecosystem file
             echo "Restarting application..."
             pm2 delete flask-app 2>/dev/null || true
             
-            PORT=$PORT \
-            DB_HOST=$DB_HOST \
-            DB_NAME=$DB_NAME \
-            DB_USER=$DB_USER \
-            DB_PASSWORD=$DB_PASSWORD \
-            FRONTEND_URL=$FRONTEND_URL \
-            pm2 start app.py \
-              --name flask-app \
-              --interpreter python3 \
-              --time \
-              --log /home/ec2-user/logs/flask-app.log \
-              --error /home/ec2-user/logs/flask-app-error.log
+            PORT="$PORT" \
+            DB_HOST="$DB_HOST" \
+            DB_NAME="$DB_NAME" \
+            DB_USER="$DB_USER" \
+            DB_PASSWORD="$DB_PASSWORD" \
+            FRONTEND_URL="$FRONTEND_URL" \
+            pm2 start ecosystem.config.js
             
             pm2 save
             
