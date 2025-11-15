@@ -73,10 +73,11 @@ jobs:
             DB_PASSWORD="$DB_PASSWORD" \
             python3 insert_deployment.py || echo "Warning: Failed to insert deployment record (continuing anyway)"
             
-            # Create PM2 ecosystem file using JSON to avoid escaping issues
+            # Create PM2 ecosystem file using Node.js for proper JSON handling
             echo "Creating PM2 ecosystem file..."
-            cat > ecosystem.config.js << 'EOFCONFIG'
-            module.exports = {
+            node -e "
+            const fs = require('fs');
+            const config = {
               apps: [{
                 name: 'flask-app',
                 script: 'app.py',
@@ -86,32 +87,26 @@ jobs:
                 autorestart: true,
                 watch: false,
                 max_memory_restart: '1G',
-                env: JSON.parse(process.env.PM2_ENV_VARS),
+                env: {
+                  PORT: process.env.PORT || '5000',
+                  DB_HOST: process.env.DB_HOST,
+                  DB_NAME: process.env.DB_NAME,
+                  DB_USER: process.env.DB_USER,
+                  DB_PASSWORD: process.env.DB_PASSWORD,
+                  FRONTEND_URL: process.env.FRONTEND_URL
+                },
                 error_file: '/home/ec2-user/logs/flask-app-error.log',
                 out_file: '/home/ec2-user/logs/flask-app.log',
                 time: true
               }]
             };
-            EOFCONFIG
+            fs.writeFileSync('ecosystem.config.js', 'module.exports = ' + JSON.stringify(config, null, 2));
+            " PORT="$PORT" DB_HOST="$DB_HOST" DB_NAME="$DB_NAME" DB_USER="$DB_USER" DB_PASSWORD="$DB_PASSWORD" FRONTEND_URL="$FRONTEND_URL"
             
             # Restart Flask app with PM2 using ecosystem file
             echo "Restarting application..."
             pm2 delete flask-app 2>/dev/null || true
-            
-            # Create JSON string with environment variables (properly escaped)
-            PM2_ENV_VARS=$(cat <<EOF
-            {
-              "PORT": "$PORT",
-              "DB_HOST": "$DB_HOST",
-              "DB_NAME": "$DB_NAME",
-              "DB_USER": "$DB_USER",
-              "DB_PASSWORD": "$DB_PASSWORD",
-              "FRONTEND_URL": "$FRONTEND_URL"
-            }
-            EOF
-            )
-            
-            PM2_ENV_VARS="$PM2_ENV_VARS" pm2 start ecosystem.config.js
+            pm2 start ecosystem.config.js
             
             pm2 save
             
