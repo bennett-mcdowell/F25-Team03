@@ -1,0 +1,392 @@
+/* Inbox Container */
+.inbox-container {
+  max-width: 900px;
+  margin: 0 auto;
+  padding: 24px;
+}
+
+.inbox-header {
+  margin-bottom: 32px;
+}
+
+.inbox-header h1 {
+  display: flex;
+  align-items: center;
+  gap: 12px;
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 2rem;
+}
+
+.unread-badge {
+  background-color: #e74c3c;
+  color: white;
+  font-size: 0.875rem;
+  font-weight: 600;
+  padding: 4px 12px;
+  border-radius: 20px;
+  min-width: 24px;
+  text-align: center;
+}
+
+.inbox-subtitle {
+  color: #7f8c8d;
+  margin: 0;
+  font-size: 1rem;
+}
+
+/* Tabs */
+.inbox-tabs {
+  display: flex;
+  gap: 8px;
+  border-bottom: 2px solid #ecf0f1;
+  margin-bottom: 24px;
+}
+
+.tab-button {
+  background: none;
+  border: none;
+  padding: 12px 24px;
+  font-size: 1rem;
+  font-weight: 600;
+  color: #7f8c8d;
+  cursor: pointer;
+  border-bottom: 3px solid transparent;
+  transition: all 0.2s;
+  position: relative;
+  bottom: -2px;
+}
+
+.tab-button:hover {
+  color: #3498db;
+}
+
+.tab-button.active {
+  color: #3498db;
+  border-bottom-color: #3498db;
+}
+
+/* Alerts Controls */
+.alerts-controls {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  margin-bottom: 20px;
+  flex-wrap: wrap;
+  gap: 16px;
+}
+
+.filter-buttons {
+  display: flex;
+  gap: 8px;
+}
+
+.filter-btn {
+  background: white;
+  border: 2px solid #ecf0f1;
+  padding: 8px 16px;
+  border-radius: 6px;
+  font-size: 0.9rem;
+  font-weight: 500;
+  color: #2c3e50;
+  cursor: pointer;
+  transition: all 0.2s;
+}
+
+.filter-btn:hover {
+  border-color: #3498db;
+  color: #3498db;
+}
+
+.filter-btn.active {
+  background-color: #3498db;
+  border-color: #3498db;
+  color: white;
+}
+
+/* Alerts List */
+.alerts-list {
+  display: flex;
+  flex-direction: column;
+  gap: 12px;
+}
+
+.no-alerts {
+  text-align: center;
+  padding: 60px 20px;
+  color: #95a5a6;
+}
+
+.no-alerts p {
+  font-size: 1.1rem;
+  margin: 0;
+}
+
+/* Alert Item */
+.alert-item {
+  display: flex;
+  align-items: flex-start;
+  gap: 16px;
+  padding: 16px;
+  background: white;
+  border: 2px solid #ecf0f1;
+  border-radius: 8px;
+  transition: all 0.2s;
+}
+
+.alert-item:hover {
+  border-color: #bdc3c7;
+  box-shadow: 0 2px 8px rgba(0, 0, 0, 0.05);
+}
+
+.alert-item.unread {
+  background-color: #f8f9fa;
+  border-color: #3498db;
+  border-left-width: 4px;
+}
+
+.alert-icon {
+  font-size: 2rem;
+  line-height: 1;
+  flex-shrink: 0;
+}
+
+.alert-content {
+  flex: 1;
+  min-width: 0;
+}
+
+.alert-message {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 0.95rem;
+  line-height: 1.5;
+}
+
+.alert-timestamp {
+  color: #95a5a6;
+  font-size: 0.85rem;
+}
+
+.btn-mark-read {
+  background: none;
+  border: 2px solid #27ae60;
+  color: #27ae60;
+  width: 32px;
+  height: 32px;
+  border-radius: 50%;
+  cursor: pointer;
+  font-size: 1rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  flex-shrink: 0;
+  transition: all 0.2s;
+}
+
+.btn-mark-read:hover {
+  background-color: #27ae60;
+  color: white;
+}
+
+/* Alert Type Colors */
+.alert-item-success {
+  border-left-color: #27ae60;
+}
+
+.alert-item-warning {
+  border-left-color: #e74c3c;
+}
+
+.alert-item-info {
+  border-left-color: #3498db;
+}
+
+.alert-item-default {
+  border-left-color: #95a5a6;
+}
+
+/* Alert Preferences */
+.alert-preferences {
+  background: white;
+  border: 2px solid #ecf0f1;
+  border-radius: 8px;
+  padding: 24px;
+}
+
+.alert-preferences h3 {
+  margin: 0 0 8px 0;
+  color: #2c3e50;
+  font-size: 1.5rem;
+}
+
+.preferences-description {
+  color: #7f8c8d;
+  margin: 0 0 24px 0;
+  font-size: 0.95rem;
+}
+
+.preference-item {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 20px;
+  border: 1px solid #ecf0f1;
+  border-radius: 8px;
+  margin-bottom: 16px;
+  transition: all 0.2s;
+}
+
+.preference-item:hover:not(.disabled) {
+  border-color: #bdc3c7;
+  background-color: #f8f9fa;
+}
+
+.preference-item.disabled {
+  opacity: 0.6;
+  background-color: #f8f9fa;
+}
+
+.preference-info {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.preference-info label {
+  font-weight: 600;
+  color: #2c3e50;
+  font-size: 1rem;
+  cursor: pointer;
+}
+
+.preference-info .preference-description {
+  color: #7f8c8d;
+  font-size: 0.875rem;
+  margin: 0;
+}
+
+/* Toggle Switch */
+.toggle-switch {
+  position: relative;
+  display: inline-block;
+  width: 56px;
+  height: 28px;
+  flex-shrink: 0;
+}
+
+.toggle-switch input {
+  opacity: 0;
+  width: 0;
+  height: 0;
+}
+
+.toggle-slider {
+  position: absolute;
+  cursor: pointer;
+  top: 0;
+  left: 0;
+  right: 0;
+  bottom: 0;
+  background-color: #bdc3c7;
+  transition: 0.3s;
+  border-radius: 28px;
+}
+
+.toggle-slider:before {
+  position: absolute;
+  content: "";
+  height: 20px;
+  width: 20px;
+  left: 4px;
+  bottom: 4px;
+  background-color: white;
+  transition: 0.3s;
+  border-radius: 50%;
+}
+
+.toggle-switch input:checked + .toggle-slider {
+  background-color: #3498db;
+}
+
+.toggle-switch input:checked + .toggle-slider:before {
+  transform: translateX(28px);
+}
+
+.toggle-switch input:disabled + .toggle-slider {
+  cursor: not-allowed;
+  opacity: 0.5;
+}
+
+/* Preferences Actions */
+.preferences-actions {
+  display: flex;
+  gap: 12px;
+  justify-content: flex-end;
+  margin-top: 24px;
+  padding-top: 24px;
+  border-top: 1px solid #ecf0f1;
+}
+
+.preferences-actions .btn {
+  padding: 10px 24px;
+}
+
+/* Responsive Design */
+@media (max-width: 768px) {
+  .inbox-container {
+    padding: 16px;
+  }
+
+  .inbox-header h1 {
+    font-size: 1.5rem;
+  }
+
+  .alerts-controls {
+    flex-direction: column;
+    align-items: stretch;
+  }
+
+  .filter-buttons {
+    width: 100%;
+    justify-content: space-between;
+  }
+
+  .filter-btn {
+    flex: 1;
+    font-size: 0.85rem;
+    padding: 8px 12px;
+  }
+
+  .alert-item {
+    padding: 12px;
+    gap: 12px;
+  }
+
+  .alert-icon {
+    font-size: 1.5rem;
+  }
+
+  .preference-item {
+    flex-direction: column;
+    align-items: flex-start;
+    gap: 12px;
+  }
+
+  .preferences-actions {
+    flex-direction: column;
+  }
+
+  .preferences-actions .btn {
+    width: 100%;
+  }
+}
+
+/* Loading State */
+.loading {
+  text-align: center;
+  padding: 60px 20px;
+  color: #95a5a6;
+  font-size: 1.1rem;
+}

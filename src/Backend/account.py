@@ -22,6 +22,8 @@ def _claims_user_id():
 @account_bp.route("/api/account", methods=["GET"])
 @token_required
 def account_api():
+    from flask_jwt_extended import get_jwt
+    
     user_id = _claims_user_id()
     if not user_id:
         return jsonify({"error": "Unauthorized"}), 401
@@ -30,6 +32,12 @@ def account_api():
         user_id = int(user_id)
     except Exception:
         return jsonify({"error": "Unauthorized"}), 401
+
+    # Get JWT claims to check for impersonation
+    claims = get_jwt() or {}
+    is_impersonating = claims.get('impersonating', False)
+    original_user_id = claims.get('original_user_id')
+    original_role = claims.get('original_role')
 
     conn = get_db_connection()
     cur = None
@@ -103,13 +111,23 @@ def account_api():
                             ds.until_at,
                             s.sponsor_id,
                             s.name,
-                            s.description
+                            s.description,
+                            s.allowed_categories
                         FROM driver_sponsor ds
                         JOIN sponsor s  ON s.sponsor_id = ds.sponsor_id
                         WHERE ds.driver_id = %s
                         ORDER BY s.name
                     """, (driver_id,))
                     sponsors = cur.fetchall() or []
+
+                    # Parse allowed_categories JSON for each sponsor
+                    import json
+                    for sponsor in sponsors:
+                        if sponsor.get('allowed_categories'):
+                            try:
+                                sponsor['allowed_categories'] = json.loads(sponsor['allowed_categories'])
+                            except (json.JSONDecodeError, TypeError):
+                                sponsor['allowed_categories'] = None
 
                     # 3) Attach to response + total balance
                     role_blob["sponsors"] = sponsors
@@ -118,17 +136,110 @@ def account_api():
             except Exception as ex:
                 log.error('Driver lookup failed: %s', ex)
 
-        return jsonify({
+        # Build response with impersonation info
+        response_data = {
             "user": user_data,
             "type": type_info,
             "role_name": role_name,
             "role": role_blob
-        })
+        }
+        
+        # Add impersonation info if present
+        if is_impersonating:
+            response_data["impersonating"] = True
+            response_data["original_user_id"] = original_user_id
+            response_data["original_role"] = original_role
+        
+        return jsonify(response_data)
 
     finally:
         if cur is not None:
             cur.close()
         conn.close()
+
+
+@account_bp.route("/api/account", methods=["PUT"])
+@token_required
+def update_account():
+    """
+    Update current user's account information.
+    Allows updating: first_name, last_name, city, state, country
+    Email cannot be changed (unique identifier)
+    """
+    from flask_jwt_extended import get_jwt
+    
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    try:
+        user_id = int(user_id)
+    except Exception:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    data = request.get_json() or {}
+    
+    # Allowed fields to update
+    allowed_fields = ['first_name', 'last_name', 'city', 'state', 'country']
+    updates = {}
+    
+    for field in allowed_fields:
+        if field in data:
+            updates[field] = data[field]
+    
+    if not updates:
+        return jsonify({"error": "No valid fields to update"}), 400
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        conn.autocommit = False
+        cur = conn.cursor(dictionary=True)
+        
+        # Verify user exists
+        cur.execute("SELECT user_id FROM `user` WHERE user_id = %s", (user_id,))
+        if not cur.fetchone():
+            return jsonify({"error": "User not found"}), 404
+        
+        # Build UPDATE query
+        set_clause = ", ".join([f"{field} = %s" for field in updates.keys()])
+        values = list(updates.values())
+        values.append(user_id)
+        
+        sql = f"UPDATE `user` SET {set_clause} WHERE user_id = %s"
+        cur.execute(sql, values)
+        
+        conn.commit()
+        
+        # Return updated user data
+        cur.execute("SELECT * FROM `user` WHERE user_id = %s", (user_id,))
+        row = cur.fetchone()
+        
+        user_data = {
+            k: v for k, v in row.items()
+            if k.lower() not in SENSITIVE_USER_FIELDS
+            and k.lower() not in HIDE_TECH_FIELDS
+        }
+        
+        return jsonify({
+            "success": True,
+            "message": "Account updated successfully",
+            "user": user_data
+        }), 200
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error updating account: {e}")
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
 
 # Admin Accounts API
 @account_bp.route("/api/admin/accounts", methods=["GET"])
@@ -235,6 +346,391 @@ def admin_accounts_api():
         if cur:
             cur.close()
         conn.close()
+
+
+@account_bp.route("/api/admin/accounts/<int:account_id>", methods=["DELETE"])
+@token_required
+@require_role("admin")
+def delete_account(account_id):
+    """
+    Admin-only endpoint to delete a user account.
+    Deletes user and all related data in proper order to respect foreign key constraints.
+    """
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        conn.autocommit = False
+        cur = conn.cursor(dictionary=True)
+
+        # Verify account exists and get type_id
+        cur.execute("SELECT user_id, type_id FROM `user` WHERE user_id = %s", (account_id,))
+        user = cur.fetchone()
+        
+        if not user:
+            return jsonify({"error": "Account not found"}), 404
+        
+        type_id = user.get("type_id")
+        
+        # Delete role-specific data based on type
+        # Driver (type_id = 3)
+        if type_id == 3:
+            # Get driver_id first
+            cur.execute("SELECT driver_id FROM driver WHERE user_id = %s", (account_id,))
+            driver = cur.fetchone()
+            
+            if driver:
+                driver_id = driver["driver_id"]
+                
+                # Delete driver-sponsor relationships
+                cur.execute("DELETE FROM driver_sponsor WHERE driver_id = %s", (driver_id,))
+                
+                # Delete driver catalog curation
+                cur.execute("DELETE FROM driver_catalog_curation WHERE driver_id = %s", (driver_id,))
+                
+            # Delete driver record
+            cur.execute("DELETE FROM driver WHERE user_id = %s", (account_id,))
+        
+        # Sponsor (type_id = 2)
+        elif type_id == 2:
+            # Get sponsor_id first
+            cur.execute("SELECT sponsor_id FROM sponsor WHERE user_id = %s", (account_id,))
+            sponsor = cur.fetchone()
+            
+            if sponsor:
+                sponsor_id = sponsor["sponsor_id"]
+                
+                # Delete driver-sponsor relationships
+                cur.execute("DELETE FROM driver_sponsor WHERE sponsor_id = %s", (sponsor_id,))
+                
+                # Delete sponsor catalog items
+                cur.execute("DELETE FROM sponsor_catalog WHERE sponsor_id = %s", (sponsor_id,))
+                
+            # Delete sponsor record
+            cur.execute("DELETE FROM sponsor WHERE user_id = %s", (account_id,))
+        
+        # Admin (type_id = 1)
+        elif type_id == 1:
+            # Delete admin record
+            cur.execute("DELETE FROM admin WHERE user_id = %s", (account_id,))
+        
+        # Delete transactions (has FK to user_id with CASCADE, but explicit is better)
+        cur.execute("DELETE FROM transactions WHERE user_id = %s", (account_id,))
+        
+        # Delete cart items (if cart table exists)
+        try:
+            cur.execute("DELETE FROM cart WHERE user_id = %s", (account_id,))
+        except Exception:
+            pass  # Table might not exist
+        
+        # Finally, delete the user record
+        cur.execute("DELETE FROM `user` WHERE user_id = %s", (account_id,))
+        
+        conn.commit()
+        
+        return jsonify({
+            "success": True,
+            "message": "Account deleted successfully",
+            "user_id": account_id
+        }), 200
+        
+    except Exception as e:
+        if conn:
+            conn.rollback()
+        print(f"Error deleting account {account_id}: {e}")
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
+@account_bp.route("/api/admin/impersonate", methods=["POST"])
+@token_required
+@require_role("admin")
+def admin_impersonate():
+    """
+    Admin-only endpoint to impersonate another user.
+    Creates a new JWT with the target user's identity while preserving original admin ID.
+    """
+    from flask_jwt_extended import create_access_token, get_jwt
+    from flask import current_app
+    
+    data = request.get_json() or {}
+    target_user_id = data.get('account_id')
+    
+    if not target_user_id:
+        return jsonify({"error": "account_id required"}), 400
+    
+    # Get current admin's info from JWT
+    claims = get_jwt() or {}
+    original_user_id = claims.get('user_id')
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        
+        # Verify target user exists and get their info
+        cur.execute("""
+            SELECT u.user_id, u.email, u.type_id, uc.username
+            FROM `user` u
+            LEFT JOIN user_credentials uc ON u.user_id = uc.user_id
+            WHERE u.user_id = %s
+        """, (target_user_id,))
+        
+        target_user = cur.fetchone()
+        if not target_user:
+            return jsonify({"error": "Target user not found"}), 404
+        
+        # Get role name
+        type_id = target_user['type_id']
+        role_map = {1: 'admin', 2: 'sponsor', 3: 'driver'}
+        target_role = role_map.get(type_id, 'user')
+        
+        # Create new token with impersonation
+        access_token = create_access_token(
+            identity=str(target_user_id),
+            additional_claims={
+                'role': target_role,
+                'user_id': target_user_id,
+                'username': target_user['username'] or target_user['email'],
+                'impersonating': True,
+                'original_user_id': original_user_id,
+                'original_role': 'admin'
+            }
+        )
+        
+        # Set the new cookie
+        resp = jsonify({
+            "success": True,
+            "message": f"Now impersonating {target_user['email']}",
+            "impersonated_user": {
+                "user_id": target_user_id,
+                "email": target_user['email'],
+                "role": target_role
+            }
+        })
+        
+        cookie_name = current_app.config.get('JWT_ACCESS_COOKIE_NAME', 'access_token_cookie')
+        samesite = current_app.config.get('JWT_COOKIE_SAMESITE', 'Lax')
+        secure = current_app.config.get('JWT_COOKIE_SECURE', False)
+        
+        resp.set_cookie(
+            cookie_name, access_token,
+            httponly=True, secure=secure, samesite=samesite,
+            path='/'
+        )
+        
+        return resp, 200
+        
+    except Exception as e:
+        print(f"Error in admin impersonate: {e}")
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
+@account_bp.route("/api/sponsor/impersonate", methods=["POST"])
+@token_required
+@require_role("sponsor")
+def sponsor_impersonate():
+    """
+    Sponsor-only endpoint to impersonate their drivers.
+    Creates a new JWT with the driver's identity while preserving original sponsor ID.
+    """
+    from flask_jwt_extended import create_access_token, get_jwt
+    from flask import current_app
+    
+    data = request.get_json() or {}
+    target_user_id = data.get('account_id')
+    
+    if not target_user_id:
+        return jsonify({"error": "account_id required"}), 400
+    
+    # Get current sponsor's info from JWT
+    claims = get_jwt() or {}
+    sponsor_user_id = claims.get('user_id')
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        
+        # Get sponsor_id from current user
+        cur.execute("SELECT sponsor_id FROM sponsor WHERE user_id = %s", (sponsor_user_id,))
+        sponsor_row = cur.fetchone()
+        if not sponsor_row:
+            return jsonify({"error": "Sponsor not found"}), 403
+        
+        sponsor_id = sponsor_row['sponsor_id']
+        
+        # Verify target is a driver enrolled with this sponsor
+        cur.execute("""
+            SELECT d.driver_id, d.user_id
+            FROM driver d
+            JOIN driver_sponsor ds ON d.driver_id = ds.driver_id
+            WHERE d.user_id = %s AND ds.sponsor_id = %s
+        """, (target_user_id, sponsor_id))
+        
+        driver_relationship = cur.fetchone()
+        if not driver_relationship:
+            return jsonify({"error": "Target user is not one of your drivers"}), 403
+        
+        # Get target user details
+        cur.execute("""
+            SELECT u.user_id, u.email, u.type_id, uc.username
+            FROM `user` u
+            LEFT JOIN user_credentials uc ON u.user_id = uc.user_id
+            WHERE u.user_id = %s
+        """, (target_user_id,))
+        
+        target_user = cur.fetchone()
+        if not target_user:
+            return jsonify({"error": "Target user not found"}), 404
+        
+        # Verify it's a driver (type_id = 3)
+        if target_user['type_id'] != 3:
+            return jsonify({"error": "Can only impersonate drivers"}), 403
+        
+        # Create new token with impersonation
+        access_token = create_access_token(
+            identity=str(target_user_id),
+            additional_claims={
+                'role': 'driver',
+                'user_id': target_user_id,
+                'username': target_user['username'] or target_user['email'],
+                'impersonating': True,
+                'original_user_id': sponsor_user_id,
+                'original_role': 'sponsor'
+            }
+        )
+        
+        # Set the new cookie
+        resp = jsonify({
+            "success": True,
+            "message": f"Now impersonating {target_user['email']}",
+            "impersonated_user": {
+                "user_id": target_user_id,
+                "email": target_user['email'],
+                "role": "driver"
+            }
+        })
+        
+        cookie_name = current_app.config.get('JWT_ACCESS_COOKIE_NAME', 'access_token_cookie')
+        samesite = current_app.config.get('JWT_COOKIE_SAMESITE', 'Lax')
+        secure = current_app.config.get('JWT_COOKIE_SECURE', False)
+        
+        resp.set_cookie(
+            cookie_name, access_token,
+            httponly=True, secure=secure, samesite=samesite,
+            path='/'
+        )
+        
+        return resp, 200
+        
+    except Exception as e:
+        print(f"Error in sponsor impersonate: {e}")
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
+
+@account_bp.route("/api/stop-impersonation", methods=["POST"])
+@token_required
+def stop_impersonation():
+    """
+    Stop impersonating and return to original user.
+    Works for both admin and sponsor impersonation.
+    """
+    from flask_jwt_extended import create_access_token, get_jwt
+    from flask import current_app
+    
+    # Get current JWT claims
+    claims = get_jwt() or {}
+    
+    if not claims.get('impersonating'):
+        return jsonify({"error": "Not currently impersonating"}), 400
+    
+    original_user_id = claims.get('original_user_id')
+    original_role = claims.get('original_role')
+    
+    if not original_user_id or not original_role:
+        return jsonify({"error": "Missing original user information"}), 400
+    
+    conn = None
+    cur = None
+    try:
+        conn = get_db_connection()
+        cur = conn.cursor(dictionary=True)
+        
+        # Get original user details
+        cur.execute("""
+            SELECT u.user_id, u.email, uc.username
+            FROM `user` u
+            LEFT JOIN user_credentials uc ON u.user_id = uc.user_id
+            WHERE u.user_id = %s
+        """, (original_user_id,))
+        
+        original_user = cur.fetchone()
+        if not original_user:
+            return jsonify({"error": "Original user not found"}), 404
+        
+        # Create token for original user (no impersonation claims)
+        access_token = create_access_token(
+            identity=str(original_user_id),
+            additional_claims={
+                'role': original_role,
+                'user_id': original_user_id,
+                'username': original_user['username'] or original_user['email']
+            }
+        )
+        
+        # Set the new cookie
+        resp = jsonify({
+            "success": True,
+            "message": "Stopped impersonation",
+            "user": {
+                "user_id": original_user_id,
+                "email": original_user['email'],
+                "role": original_role
+            }
+        })
+        
+        cookie_name = current_app.config.get('JWT_ACCESS_COOKIE_NAME', 'access_token_cookie')
+        samesite = current_app.config.get('JWT_COOKIE_SAMESITE', 'Lax')
+        secure = current_app.config.get('JWT_COOKIE_SECURE', False)
+        
+        resp.set_cookie(
+            cookie_name, access_token,
+            httponly=True, secure=secure, samesite=samesite,
+            path='/'
+        )
+        
+        return resp, 200
+        
+    except Exception as e:
+        print(f"Error stopping impersonation: {e}")
+        return jsonify({"error": str(e)}), 500
+        
+    finally:
+        if cur:
+            cur.close()
+        if conn:
+            conn.close()
+
 
 @account_bp.post("/api/sponsor/bulk_drivers")
 @token_required
@@ -472,9 +968,9 @@ def purchase_api():
         driver_sponsor_id = ds_row['driver_sponsor_id']
         current_balance = float(ds_row['balance'])
         
-        # 3. Calculate total cost (items are already in points)
-        total_points = sum(item.get('price', 0) * item.get('quantity', 1) for item in cart_items)
-        total_dollars = total_points / 100.0  # Convert points back to dollars for DB
+        # 3. Calculate total cost in dollars (items prices are in dollars from frontend)
+        total_dollars = sum(item.get('price', 0) * item.get('quantity', 1) for item in cart_items)
+        total_points = int(total_dollars * 100)  # Convert to points for display
         
         # 4. Check if driver has enough balance
         if current_balance < total_dollars:
@@ -496,7 +992,7 @@ def purchase_api():
         # 6. Create transaction records for each item
         transaction_time = datetime.datetime.now()
         for item in cart_items:
-            item_price_dollars = (item.get('price', 0) * item.get('quantity', 1)) / 100.0
+            item_price_dollars = item.get('price', 0) * item.get('quantity', 1)
             cur.execute("""
                 INSERT INTO transactions (`date`, user_id, amount, item_id, driver_sponsor_id)
                 VALUES (%s, %s, %s, %s, %s)
@@ -971,16 +1467,28 @@ def driver_sponsors_api():
         # Get all sponsors and balances
         cur.execute("""
             SELECT
+                ds.driver_sponsor_id,
                 s.sponsor_id,
-                s.name AS sponsor_name,
+                s.name,
                 s.description,
-                ds.balance
+                s.allowed_categories,
+                ds.balance,
+                ds.since_at
             FROM driver_sponsor ds
             JOIN sponsor s ON s.sponsor_id = ds.sponsor_id
             WHERE ds.driver_id = %s AND ds.status = 'ACTIVE'
             ORDER BY s.name
         """, (driver_id,))
         sponsors = cur.fetchall() or []
+
+        # Parse allowed_categories JSON for each sponsor
+        import json
+        for sponsor in sponsors:
+            if sponsor.get('allowed_categories'):
+                try:
+                    sponsor['allowed_categories'] = json.loads(sponsor['allowed_categories'])
+                except (json.JSONDecodeError, TypeError):
+                    sponsor['allowed_categories'] = None
 
         total_points = float(sum((row.get("balance") or 0) for row in sponsors))
 
@@ -1691,8 +2199,8 @@ def get_account_detail(user_id):
 # Update account details (with permission check)
 @account_bp.route("/api/admin/account/<int:user_id>", methods=["PUT"])
 @token_required
-def update_account(user_id):
-    """Update user account information"""
+def admin_update_account(user_id):
+    """Update user account information (admin endpoint)"""
     from flask import g
     
     # Use the existing helper function
@@ -1866,4 +2374,84 @@ def reset_user_password(user_id):
     finally:
         if cur:
             cur.close()
+        if conn:
+            conn.close()
+
+
+# =====================================================================
+# USER CREATION ENDPOINTS
+# =====================================================================
+
+@account_bp.route('/api/admin/users', methods=['POST'])
+@token_required
+@require_role('admin')
+def admin_create_user():
+    """
+    Admin endpoint to create users (admin, driver, or sponsor)
+    Allows admins to create any type of user
+    """
+    from user_management import UserCreationService
+    
+    user_id = _claims_user_id()
+    data = request.get_json() or {}
+    user_type = data.get('user_type')  # 'admin', 'driver', or 'sponsor'
+    
+    if user_type not in ['admin', 'driver', 'sponsor']:
+        return jsonify({"error": "Invalid user_type. Must be 'admin', 'driver', or 'sponsor'"}), 400
+    
+    # Create the user
+    new_user_id, error = UserCreationService.create_user(data, user_type, created_by_user_id=user_id)
+    
+    if error:
+        return jsonify({"error": error}), 400
+    
+    return jsonify({
+        "message": f"{user_type.capitalize()} user created successfully",
+        "user_id": new_user_id,
+        "user_type": user_type
+    }), 201
+
+
+@account_bp.route('/api/sponsor/users', methods=['POST'])
+@token_required
+@require_role('sponsor')
+def sponsor_create_user():
+    """
+    Sponsor endpoint to create additional sponsor users for their organization
+    Self-managed, no application process
+    """
+    from user_management import UserCreationService
+    
+    user_id = _claims_user_id()
+    data = request.get_json() or {}
+    
+    # Get the sponsor_id for the current user
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor(dictionary=True)
+        cur.execute("SELECT sponsor_id FROM sponsor WHERE user_id = %s", (user_id,))
+        sponsor = cur.fetchone()
+        
+        if not sponsor:
+            return jsonify({"error": "Sponsor organization not found"}), 404
+        
+        sponsor_id = sponsor['sponsor_id']
         conn.close()
+        
+        # Create sponsor user for this organization
+        new_user_id, error = UserCreationService.create_sponsor_user_for_organization(data, sponsor_id)
+        
+        if error:
+            return jsonify({"error": error}), 400
+        
+        return jsonify({
+            "message": "Sponsor user created successfully",
+            "user_id": new_user_id,
+            "sponsor_id": sponsor_id
+        }), 201
+        
+    except Exception as e:
+        return jsonify({"error": str(e)}), 500
+    finally:
+        if conn:
+            conn.close()

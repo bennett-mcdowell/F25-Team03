@@ -13,6 +13,20 @@ jobs:
       - name: Checkout code
         uses: actions/checkout@v3
       
+      - name: Setup Node.js
+        uses: actions/setup-node@v3
+        with:
+          node-version: '18'
+          cache: 'npm'
+          cache-dependency-path: Frontend_Rework/package-lock.json
+      
+      - name: Build Frontend
+        run: |
+          cd Frontend_Rework
+          npm ci
+          npm run build
+          cd ..
+      
       - name: Deploy to EC2
         uses: appleboy/ssh-action@master
         env:
@@ -21,26 +35,61 @@ jobs:
           DB_NAME: ${{ secrets.DB_NAME }}
           DB_USER: ${{ secrets.DB_USER }}
           DB_PASSWORD: ${{ secrets.DB_PASSWORD }}
+          FRONTEND_URL: ${{ secrets.FRONTEND_URL }}
         with:
           host: ${{ secrets.EC2_HOST }}
           username: ${{ secrets.EC2_USERNAME }}
           key: ${{ secrets.EC2_SSH_KEY }}
-          envs: PORT,DB_HOST,DB_NAME,DB_USER,DB_PASSWORD
+          envs: PORT,DB_HOST,DB_NAME,DB_USER,DB_PASSWORD,FRONTEND_URL
           script: |
+            echo "Starting deployment..."
+            
+            # Pull latest code
             cd /home/ec2-user/F25-Team03
             git pull origin main
+            
+            # Install Python dependencies
             cd src
-            pip3 install -r requirements.txt
-            cd Backend
+            pip3 install -r requirements.txt --quiet
+            
+            # Build Frontend on server (backup if GitHub Actions build fails)
+            echo "Building frontend..."
+            cd ../Frontend_Rework
+            npm ci --quiet
+            npm run build
             
             # Insert deployment record
+            echo "Inserting deployment record..."
+            cd ../src/Backend
             export DB_HOST="$DB_HOST"
             export DB_NAME="$DB_NAME"
             export DB_USER="$DB_USER"
             export DB_PASSWORD="$DB_PASSWORD"
-            python3 insert_deployment.py || echo "Warning: Failed to insert deployment record"
             
-            # Restart app
-            pm2 delete flask-app || true
-            PORT=$PORT DB_HOST=$DB_HOST DB_NAME=$DB_NAME DB_USER=$DB_USER DB_PASSWORD=$DB_PASSWORD pm2 start app.py --name flask-app --interpreter python3
+            if python3 insert_deployment.py; then
+              echo "Deployment record inserted successfully"
+            else
+              echo "Warning: Failed to insert deployment record (continuing anyway)"
+            fi
+            
+            # Restart Flask app with PM2
+            echo "Restarting application..."
+            pm2 delete flask-app 2>/dev/null || true
+            
+            PORT=$PORT \
+            DB_HOST=$DB_HOST \
+            DB_NAME=$DB_NAME \
+            DB_USER=$DB_USER \
+            DB_PASSWORD=$DB_PASSWORD \
+            FRONTEND_URL=$FRONTEND_URL \
+            pm2 start app.py \
+              --name flask-app \
+              --interpreter python3 \
+              --time \
+              --log /home/ec2-user/logs/flask-app.log \
+              --error /home/ec2-user/logs/flask-app-error.log
+            
             pm2 save
+            
+            echo "Deployment complete!"
+            pm2 status
