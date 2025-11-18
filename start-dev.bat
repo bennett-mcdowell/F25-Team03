@@ -7,8 +7,8 @@ docker rm flask-backend 2>NUL
 
 REM Start Backend in Docker
 echo Building and starting Flask backend on port 5000...
-cd src
-docker build -t myapp .
+REM Build from repo root with -f flag to specify Dockerfile location
+docker build -f src\Dockerfile -t myapp .
 
 if %ERRORLEVEL% NEQ 0 (
     echo Failed to build backend
@@ -24,8 +24,11 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo Backend running at http://localhost:5000
 
+REM Go back to repo root for frontend
+cd ..
+
 REM Start React Frontend
-cd ..\Frontend_Rework
+cd Frontend_Rework
 
 REM Check if node_modules exists, if not install
 if not exist "node_modules\" (
