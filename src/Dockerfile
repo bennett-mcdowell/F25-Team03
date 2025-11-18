@@ -14,9 +14,9 @@ COPY Frontend_Rework ./Frontend_Rework
 WORKDIR /app/Frontend_Rework
 RUN npm ci && npm run build
 
-# Copy backend
+# Copy backend (use --chmod to handle Windows permission issues)
 WORKDIR /app
-COPY src/Backend/ ./Backend/
+COPY --chmod=755 src/Backend/ ./Backend/
 
 # Set working directory to backend
 WORKDIR /app/Backend
