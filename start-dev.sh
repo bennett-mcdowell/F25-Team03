@@ -5,10 +5,10 @@ echo "Cleaning up old containers..."
 docker stop flask-backend 2>/dev/null || true
 docker rm flask-backend 2>/dev/null || true
 
-# Start Backend in Docker
+# Start Backend in Docker (backend only for faster builds)
 echo "Building and starting Flask backend on port 5000..."
 cd src
-docker build -t myapp .
+docker build -f Dockerfile.dev -t myapp .
 
 if ! docker run -d -p 5000:5000 --name flask-backend myapp; then
   echo "Failed to start backend"

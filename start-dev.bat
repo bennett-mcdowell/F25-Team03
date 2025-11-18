@@ -5,10 +5,10 @@ echo Cleaning up old containers...
 docker stop flask-backend 2>NUL
 docker rm flask-backend 2>NUL
 
-REM Start Backend in Docker
+REM Start Backend in Docker (backend only for faster builds)
 echo Building and starting Flask backend on port 5000...
-REM Build from repo root with -f flag to specify Dockerfile location
-docker build -f src\Dockerfile -t myapp .
+REM Use dev Dockerfile - backend only, no frontend build
+docker build -f src\Dockerfile.dev -t myapp .
 
 if %ERRORLEVEL% NEQ 0 (
     echo Failed to build backend
