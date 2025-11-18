@@ -94,6 +94,9 @@ const Layout = ({ children }) => {
                 <Link to="/sponsor/catalog">Catalog</Link>
               </li>
               <li>
+                <Link to="/sponsor/commission">Commission</Link>
+              </li>
+              <li>
                 <Link to="/sponsor/reports">Reports</Link>
               </li>
             </>

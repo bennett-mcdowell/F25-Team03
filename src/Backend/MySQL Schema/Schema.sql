@@ -108,6 +108,7 @@ CREATE TABLE sponsor (
   name VARCHAR(200) NOT NULL,
   description TEXT NOT NULL,
   allowed_categories TEXT NULL,
+  point_value DECIMAL(10,4) DEFAULT 0.01,
   PRIMARY KEY (sponsor_id),
   UNIQUE KEY uq_sponsor_user (user_id),
   CONSTRAINT fk_sponsor_user
