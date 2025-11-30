@@ -334,16 +334,21 @@ export const reportService = {
     return response.data;
   },
 
-  getAuditLogReport: async (filters = {}) => {
-    const params = new URLSearchParams();
-    if (filters.startDate) params.append('start_date', filters.startDate);
-    if (filters.endDate) params.append('end_date', filters.endDate);
-    if (filters.sponsorId) params.append('sponsor_id', filters.sponsorId);
-    if (filters.category) params.append('category', filters.category);
+  getAuditLogReport: async (filters = {}, role = 'admin') => {
+  const params = new URLSearchParams();
+  if (filters.startDate) params.append('start_date', filters.startDate);
+  if (filters.endDate) params.append('end_date', filters.endDate);
+  if (filters.category) params.append('category', filters.category);
+  
+  if (role === 'admin' && filters.sponsorId) {
+    params.append('sponsor_id', filters.sponsorId);
+  }
 
-    const response = await api.get(`/admin/reports/audit-log?${params.toString()}`);
-    return response.data;
-  },
+  const endpoint = role === 'admin' ? '/admin/reports/audit-log' : '/sponsor/reports/audit-log';
+  const response = await api.get(`${endpoint}?${params.toString()}`);
+  return response.data;
+},
+
 
   // Sponsor Reports (for future implementation)
   getSponsorDriversReport: async (filters = {}) => {
@@ -360,7 +365,8 @@ export const reportService = {
     const params = new URLSearchParams();
     if (filters.startDate) params.append('start_date', filters.startDate);
     if (filters.endDate) params.append('end_date', filters.endDate);
-
+    if (filters.driverId) params.append('driver_id', filters.driverId);
+    
     const response = await api.get(`/sponsor/reports/points?${params.toString()}`);
     return response.data;
   },

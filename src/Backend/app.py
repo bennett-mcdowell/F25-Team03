@@ -7,7 +7,7 @@ from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
 import base64
 import os
-
+from sponsor_reports import sponsor_reports_bp
 
 # ------------------------------
 # Logging setup (stdout + optional file)
@@ -111,6 +111,7 @@ app.register_blueprint(auth_bp)
 app.register_blueprint(account_bp)
 app.register_blueprint(sponsor_bp)
 app.register_blueprint(admin_reports_bp)
+app.register_blueprint(sponsor_reports_bp)
 
 # Serve React App (for production)
 # This catch-all route must be registered LAST so API routes take priority
