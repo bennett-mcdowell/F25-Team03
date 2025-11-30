@@ -2,10 +2,13 @@ import { useState } from 'react';
 import ConfirmationModal from './ConfirmationModal';
 import '../styles/Orders.css';
 
-const OrderCard = ({ order, onCancel, onUpdate, userRole }) => {
+const OrderCard = ({ order, onCancel, onUpdate, onUpdateStatus, userRole }) => {
   const [showCancelModal, setShowCancelModal] = useState(false);
   const [showUpdateModal, setShowUpdateModal] = useState(false);
+  const [showStatusModal, setShowStatusModal] = useState(false);
   const [updateNote, setUpdateNote] = useState('');
+  const [updateTracking, setUpdateTracking] = useState(order.trackingNumber || '');
+  const [newStatus, setNewStatus] = useState(order.status);
 
   const getStatusBadgeClass = (status) => {
     const statusMap = {
@@ -30,8 +33,8 @@ const OrderCard = ({ order, onCancel, onUpdate, userRole }) => {
   };
 
   const canCancelOrder = () => {
-    // Orders can be cancelled if they're PENDING or PROCESSING
-    return ['PENDING', 'PROCESSING'].includes(order.status);
+    // Orders can only be cancelled if they're PENDING
+    return order.status === 'PENDING';
   };
 
   const canUpdateOrder = () => {
@@ -40,16 +43,51 @@ const OrderCard = ({ order, onCancel, onUpdate, userRole }) => {
            !['DELIVERED', 'CANCELLED'].includes(order.status);
   };
 
+  const canUpdateStatus = () => {
+    // Admins and sponsors can update status
+    return (userRole === 'admin' || userRole === 'sponsor') &&
+           !['DELIVERED', 'CANCELLED'].includes(order.status);
+  };
+
+  const getNextStatusOptions = () => {
+    const statusFlow = {
+      'PENDING': ['PROCESSING', 'CANCELLED'],
+      'PROCESSING': ['SHIPPED', 'CANCELLED'],
+      'SHIPPED': ['DELIVERED'],
+      'DELIVERED': [],
+      'CANCELLED': []
+    };
+    return statusFlow[order.status] || [];
+  };
+
   const handleCancelConfirm = () => {
     onCancel(order.id);
     setShowCancelModal(false);
   };
 
   const handleUpdateSubmit = () => {
-    if (updateNote.trim()) {
-      onUpdate(order.id, { note: updateNote });
-      setUpdateNote('');
+    const updates = {};
+    
+    if (updateNote.trim() && updateNote !== order.note) {
+      updates.notes = updateNote;
+    }
+    
+    if (updateTracking.trim() && updateTracking !== order.trackingNumber) {
+      updates.tracking_number = updateTracking;
+    }
+    
+    if (Object.keys(updates).length > 0) {
+      onUpdate(order.id, updates);
       setShowUpdateModal(false);
+    } else {
+      alert('No changes to save');
+    }
+  };
+
+  const handleStatusUpdate = () => {
+    if (newStatus !== order.status) {
+      onUpdateStatus(order.id, newStatus);
+      setShowStatusModal(false);
     }
   };
 
@@ -118,14 +156,27 @@ const OrderCard = ({ order, onCancel, onUpdate, userRole }) => {
           {canUpdateOrder() && (
             <button 
               className="btn-secondary"
-              onClick={() => setShowUpdateModal(true)}
+              onClick={() => {
+                setUpdateNote(order.note || '');
+                setUpdateTracking(order.trackingNumber || '');
+                setShowUpdateModal(true);
+              }}
             >
-              Add Note
+              Update Details
+            </button>
+          )}
+          {canUpdateStatus() && getNextStatusOptions().length > 0 && (
+            <button 
+              className="btn-primary"
+              onClick={() => setShowStatusModal(true)}
+            >
+              Update Status
             </button>
           )}
         </div>
       </div>
 
+      {/* Cancel Order Modal */}
       {showCancelModal && (
         <ConfirmationModal
           title="Cancel Order"
@@ -137,18 +188,29 @@ const OrderCard = ({ order, onCancel, onUpdate, userRole }) => {
         />
       )}
 
+      {/* Update Order Details Modal */}
       {showUpdateModal && (
         <div className="modal-overlay" onClick={() => setShowUpdateModal(false)}>
           <div className="modal" onClick={(e) => e.stopPropagation()}>
-            <h2>Add Note to Order</h2>
-            <p>Add an internal note to this order (visible to sponsors and admins).</p>
+            <h2>Update Order Details</h2>
+            <p>Update tracking number or add notes to this order.</p>
             
             <div className="form-group">
-              <label>Note:</label>
+              <label>Tracking Number:</label>
+              <input
+                type="text"
+                value={updateTracking}
+                onChange={(e) => setUpdateTracking(e.target.value)}
+                placeholder="Enter tracking number..."
+              />
+            </div>
+
+            <div className="form-group">
+              <label>Notes:</label>
               <textarea
                 value={updateNote}
                 onChange={(e) => setUpdateNote(e.target.value)}
-                placeholder="Enter note..."
+                placeholder="Enter notes..."
                 rows={4}
               />
             </div>
@@ -158,6 +220,7 @@ const OrderCard = ({ order, onCancel, onUpdate, userRole }) => {
                 className="btn-secondary" 
                 onClick={() => {
                   setUpdateNote('');
+                  setUpdateTracking('');
                   setShowUpdateModal(false);
                 }}
               >
@@ -166,9 +229,62 @@ const OrderCard = ({ order, onCancel, onUpdate, userRole }) => {
               <button 
                 className="btn-primary" 
                 onClick={handleUpdateSubmit}
-                disabled={!updateNote.trim()}
               >
-                Save Note
+                Save Changes
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Update Status Modal */}
+      {showStatusModal && (
+        <div className="modal-overlay" onClick={() => setShowStatusModal(false)}>
+          <div className="modal" onClick={(e) => e.stopPropagation()}>
+            <h2>Update Order Status</h2>
+            <p>Change the status of Order #{order.orderNumber}</p>
+            
+            <div className="form-group">
+              <label>Current Status: <strong>{order.status}</strong></label>
+              <label>New Status:</label>
+              <select 
+                value={newStatus} 
+                onChange={(e) => setNewStatus(e.target.value)}
+                className="status-select"
+              >
+                <option value={order.status}>{order.status}</option>
+                {getNextStatusOptions().map(status => (
+                  <option key={status} value={status}>{status}</option>
+                ))}
+              </select>
+            </div>
+
+            <div className="status-info" style={{ 
+              padding: '0.75rem', 
+              backgroundColor: '#f0f8ff', 
+              borderRadius: '4px',
+              marginTop: '1rem',
+              fontSize: '0.9rem'
+            }}>
+              <strong>Note:</strong> The driver will receive an alert about this status change.
+            </div>
+
+            <div className="modal-buttons">
+              <button 
+                className="btn-secondary" 
+                onClick={() => {
+                  setNewStatus(order.status);
+                  setShowStatusModal(false);
+                }}
+              >
+                Cancel
+              </button>
+              <button 
+                className="btn-primary" 
+                onClick={handleStatusUpdate}
+                disabled={newStatus === order.status}
+              >
+                Update Status
               </button>
             </div>
           </div>
