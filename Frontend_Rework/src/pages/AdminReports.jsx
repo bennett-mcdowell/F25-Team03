@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import ReportFilters from '../components/ReportFilters';
 import ReportTable from '../components/ReportTable';
-import { accountService } from '../services/apiService';
+import { accountService, reportService } from '../services/apiService';
 import '../styles/Dashboard.css';
 
 const AdminReports = () => {
@@ -10,7 +10,7 @@ const AdminReports = () => {
   const [reportData, setReportData] = useState([]);
   const [drivers, setDrivers] = useState([]);
   const [sponsors, setSponsors] = useState([]);
-  const [filters, setFilters] = useState({});
+  const [filters, setFilters] = useState({ viewType: 'summary' });
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
@@ -20,26 +20,40 @@ const AdminReports = () => {
 
   useEffect(() => {
     if (Object.keys(filters).length > 0) {
+      // Clear existing data to prevent column mismatch issues
+      setReportData([]);
       generateReport();
     }
   }, [filters, activeReport]);
 
   const fetchSponsorsAndDrivers = async () => {
     try {
-      // TODO: Replace with actual API calls
-      // const sponsorsData = await adminService.getAllSponsors();
-      // const driversData = await adminService.getAllDrivers();
+      // Get all accounts to extract sponsors and drivers
+      const response = await accountService.getAccounts();
+      const accountsData = response.accounts || [];
       
-      setSponsors([
-        { sponsor_id: 1, name: 'Speedy Tires' },
-        { sponsor_id: 2, name: 'FuelMax' },
-      ]);
-      setDrivers([
-        { driver_id: 1, first_name: 'Danny', last_name: 'Driver' },
-        { driver_id: 2, first_name: 'Dina', last_name: 'Driver' },
-      ]);
+      // Filter sponsors (type_id = 2)
+      const sponsorAccounts = accountsData.filter(acc => acc.user?.type_id === 2);
+      const sponsorsList = sponsorAccounts.map(acc => ({
+        sponsor_id: acc.role?.sponsor_id,
+        name: acc.role?.name || `${acc.user?.first_name} ${acc.user?.last_name}`
+      }));
+      
+      // Filter drivers (type_id = 3)
+      const driverAccounts = accountsData.filter(acc => acc.user?.type_id === 3);
+      const driversList = driverAccounts.map(acc => ({
+        driver_id: acc.role?.driver_id,
+        first_name: acc.user?.first_name,
+        last_name: acc.user?.last_name
+      }));
+      
+      setSponsors(sponsorsList);
+      setDrivers(driversList);
     } catch (err) {
       console.error('Failed to load data:', err);
+      // Fallback to empty arrays if API fails
+      setSponsors([]);
+      setDrivers([]);
     }
   };
 
@@ -47,15 +61,76 @@ const AdminReports = () => {
     setLoading(true);
     setError('');
     try {
-      // TODO: Replace with actual API calls when backend is ready
-      // const data = await reportService.generateAdminReport(activeReport, filters);
+      let response;
       
-      // Mock data for now
-      const mockData = generateMockData(activeReport, filters);
-      setReportData(mockData);
+      // Map frontend report types to backend API calls
+      switch (activeReport) {
+        case 'sales_by_sponsor':
+          response = await reportService.getSalesReport({
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            sponsorId: filters.sponsorId,
+            viewType: filters.viewType || 'summary'
+          });
+          setReportData(response.data || []);
+          break;
+          
+        case 'driver_activity':
+          response = await reportService.getDriversReport({
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            sponsorId: filters.sponsorId
+          });
+          setReportData(response.data || []);
+          break;
+          
+        case 'sponsor_overview':
+          response = await reportService.getSponsorsReport({
+            startDate: filters.startDate,
+            endDate: filters.endDate
+          });
+          setReportData(response.data || []);
+          break;
+          
+        case 'sales_by_driver':
+          response = await reportService.getSalesByDriverReport({
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            sponsorId: filters.sponsorId,
+            driverId: filters.driverId,
+            viewType: filters.viewType || 'summary'
+          });
+          setReportData(response.data || []);
+          break;
+          
+        case 'invoice':
+          response = await reportService.getInvoiceReport({
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            sponsorId: filters.sponsorId,
+            feeRate: filters.feeRate || 0.05
+          });
+          setReportData(response.data || []);
+          break;
+          
+        case 'audit_log':
+        case 'admin_audit':
+          response = await reportService.getAuditLogReport({
+            startDate: filters.startDate,
+            endDate: filters.endDate,
+            sponsorId: filters.sponsorId,
+            category: filters.auditCategory || 'all'
+          });
+          setReportData(response.data || []);
+          break;
+          
+        default:
+          setReportData([]);
+      }
     } catch (err) {
-      setError('Failed to generate report');
-      console.error(err);
+      setError(err.response?.data?.error || 'Failed to generate report');
+      console.error('Report generation error:', err);
+      setReportData([]);
     } finally {
       setLoading(false);
     }
@@ -243,44 +318,68 @@ const AdminReports = () => {
           { key: 'driver_name', label: 'Driver' },
           { key: 'date', label: 'Date' },
           { key: 'product', label: 'Product' },
-          { key: 'amount', label: 'Amount', render: (val) => `$${val.toFixed(2)}` },
+          { key: 'amount', label: 'Amount', render: (val) => `$${Number(val).toFixed(2)}` },
           { key: 'order_id', label: 'Order ID' },
         ];
       } else {
         return [
           { key: 'sponsor_name', label: 'Sponsor' },
-          { key: 'total_sales', label: 'Total Sales', render: (val) => `$${val.toFixed(2)}` },
+          { key: 'total_sales', label: 'Total Sales', render: (val) => `$${Number(val).toFixed(2)}` },
           { key: 'order_count', label: 'Order Count' },
-          { key: 'driver_count', label: 'Driver Count' },
+          { key: 'active_drivers', label: 'Active Drivers' },
         ];
       }
     } else if (reportType === 'sales_by_driver') {
       if (viewType === 'detailed') {
         return [
           { key: 'driver_name', label: 'Driver' },
+          { key: 'driver_email', label: 'Email' },
           { key: 'sponsor_name', label: 'Sponsor' },
           { key: 'date', label: 'Date' },
           { key: 'product', label: 'Product' },
-          { key: 'amount', label: 'Amount', render: (val) => `$${val.toFixed(2)}` },
+          { key: 'amount', label: 'Amount', render: (val) => `$${Number(val).toFixed(2)}` },
           { key: 'order_id', label: 'Order ID' },
         ];
       } else {
         return [
           { key: 'driver_name', label: 'Driver' },
-          { key: 'total_spent', label: 'Total Spent', render: (val) => `$${val.toFixed(2)}` },
+          { key: 'driver_email', label: 'Email' },
+          { key: 'sponsor_name', label: 'Sponsor' },
           { key: 'order_count', label: 'Order Count' },
-          { key: 'sponsor_count', label: 'Sponsor Count' },
+          { key: 'total_spent', label: 'Total Spent', render: (val) => `$${Number(val).toFixed(2)}` },
+          { key: 'active_days', label: 'Active Days' },
         ];
       }
+    } else if (reportType === 'driver_activity') {
+      return [
+        { key: 'driver_name', label: 'Driver Name' },
+        { key: 'email', label: 'Email' },
+        { key: 'enrolled_sponsors', label: 'Enrolled Sponsors' },
+        { key: 'total_balance', label: 'Total Balance', render: (val) => `$${Number(val).toFixed(2)}` },
+        { key: 'order_count', label: 'Order Count' },
+        { key: 'total_spent', label: 'Total Spent', render: (val) => `$${Number(val).toFixed(2)}` },
+      ];
+    } else if (reportType === 'sponsor_overview') {
+      return [
+        { key: 'sponsor_name', label: 'Sponsor Name' },
+        { key: 'description', label: 'Description' },
+        { key: 'active_drivers', label: 'Active Drivers' },
+        { key: 'pending_drivers', label: 'Pending Drivers' },
+        { key: 'total_points_distributed', label: 'Points Distributed', render: (val) => `$${Number(val).toFixed(2)}` },
+        { key: 'total_points_spent', label: 'Points Spent', render: (val) => `$${Number(val).toFixed(2)}` },
+        { key: 'order_count', label: 'Order Count' },
+      ];
     } else if (reportType === 'invoice') {
       return [
         { key: 'sponsor_name', label: 'Sponsor' },
-        { key: 'driver_name', label: 'Driver', render: (val, row) => row.summary || val },
-        { key: 'total_purchases', label: 'Total Purchases', render: (val) => `$${val.toFixed(2)}` },
-        { key: 'fee_rate', label: 'Fee Rate' },
-        { key: 'fee_amount', label: 'Fee Amount', render: (val) => val ? `$${val.toFixed(2)}` : '' },
+        { key: 'driver_name', label: 'Driver', render: (val, row) => row.is_summary ? <strong>{val}</strong> : val },
+        { key: 'driver_email', label: 'Email' },
+        { key: 'order_count', label: 'Orders' },
+        { key: 'total_purchases', label: 'Total Purchases', render: (val) => `$${Number(val).toFixed(2)}` },
+        { key: 'fee_rate', label: 'Fee Rate', render: (val) => typeof val === 'string' ? val : `${(val * 100).toFixed(1)}%` },
+        { key: 'fee_amount', label: 'Fee Amount', render: (val) => val ? `$${Number(val).toFixed(2)}` : '' },
       ];
-    } else if (reportType === 'admin_audit') {
+    } else if (reportType === 'audit_log' || reportType === 'admin_audit') {
       return [
         { key: 'date', label: 'Date/Time' },
         { key: 'category', label: 'Category' },

@@ -52,6 +52,7 @@ from routes import routes_bp
 from auth import auth_bp
 from account import account_bp 
 from sponsor import sponsor_bp
+from admin_reports import admin_reports_bp
 
 # App initialization
 load_dotenv()
@@ -104,26 +105,37 @@ jwt = JWTManager(app)
 
 cache = Cache(app, config={'CACHE_TYPE': 'SimpleCache'})
 
-# Register Blueprints
+# Register Blueprints (these take priority over catch-all routes)
 app.register_blueprint(routes_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(account_bp)
 app.register_blueprint(sponsor_bp)
+app.register_blueprint(admin_reports_bp)
 
 # Serve React App (for production)
+# This catch-all route must be registered LAST so API routes take priority
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_react(path):
     """Serve React app for all routes (SPA)"""
-    from flask import send_from_directory
+    from flask import send_from_directory, abort
     import os
+    
+    # If no static folder configured, return 404
+    if not app.static_folder:
+        abort(404)
+    
+    # If path is empty, serve index.html
+    if not path:
+        return send_from_directory(app.static_folder, 'index.html')
     
     # Check if path is a file in the dist directory
     dist_path = os.path.join(app.static_folder, path)
-    if path and os.path.exists(dist_path) and os.path.isfile(dist_path):
+    if os.path.exists(dist_path) and os.path.isfile(dist_path):
         return send_from_directory(app.static_folder, path)
     
-    # Otherwise serve index.html (React Router will handle routing)
+    # For any other path (like /admin, /market, etc.), serve index.html
+    # React Router will handle the routing on the client side
     return send_from_directory(app.static_folder, 'index.html')
 
 # Optional: prove ENV values at startup (safe ones)

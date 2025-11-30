@@ -53,7 +53,11 @@ const DriverDashboard = () => {
     if (sponsor.relationship_status === 'PENDING') {
       return { label: 'Pending', className: 'pending', canApply: false };
     }
-    return { label: 'Unknown', className: 'unknown', canApply: false };
+    if (sponsor.relationship_status === 'INACTIVE') {
+      return { label: 'Inactive', className: 'inactive', canApply: true };
+    }
+    // Fallback for null or undefined status (should be available)
+    return { label: 'Available', className: 'available', canApply: true };
   };
 
   if (loading) return <Layout><div>Loading...</div></Layout>;
@@ -130,9 +134,17 @@ const DriverDashboard = () => {
                         </span>
                       </td>
                       <td>
-                        {status.canApply && (
+                        {status.canApply && status.label === 'Available' && (
                           <button
                             className="btn btn-sm btn-primary"
+                            onClick={() => handleApplyToSponsor(sponsor.sponsor_id)}
+                          >
+                            Apply
+                          </button>
+                        )}
+                        {status.canApply && status.label === 'Inactive' && (
+                          <button
+                            className="btn btn-sm btn-secondary"
                             onClick={() => handleApplyToSponsor(sponsor.sponsor_id)}
                           >
                             Apply
