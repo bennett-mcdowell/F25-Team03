@@ -1,5 +1,8 @@
 @echo off
-REM Windows batch script to start development environment
+setlocal
+
+REM Always run from the folder where this script is located (repo root)
+cd /d "%~dp0"
 
 echo Cleaning up old containers...
 docker stop flask-backend 2>NUL
@@ -7,7 +10,6 @@ docker rm flask-backend 2>NUL
 
 REM Start Backend in Docker (backend only for faster builds)
 echo Building and starting Flask backend on port 5000...
-REM Use dev Dockerfile - backend only, no frontend build
 docker build -f src\Dockerfile.dev -t myapp .
 
 if %ERRORLEVEL% NEQ 0 (
@@ -24,11 +26,15 @@ if %ERRORLEVEL% NEQ 0 (
 
 echo Backend running at http://localhost:5000
 
-REM Go back to repo root for frontend
-cd ..
-
-REM Start React Frontend
+REM Go to React Frontend folder (where package.json lives)
 cd Frontend_Rework
+
+REM Safety check for package.json
+if not exist "package.json" (
+    echo ERROR: package.json not found in %CD%
+    echo Expected location: F25-TEAM03\Frontend_Rework
+    goto cleanup
+)
 
 REM Check if node_modules exists, if not install
 if not exist "node_modules\" (
@@ -37,6 +43,7 @@ if not exist "node_modules\" (
 )
 
 echo Starting React frontend on port 3000...
+REM Start a new terminal window for React, staying in this folder
 start "React Frontend" cmd /k npm run dev
 
 echo.
@@ -46,13 +53,16 @@ echo =========================================
 echo Backend (Flask):  http://localhost:5000
 echo Frontend (React): http://localhost:3000
 echo.
-echo Press any key to stop both servers...
+echo Press any key here to stop the backend container...
+echo (Close the React window separately when you're done.)
 echo =========================================
 
 pause >NUL
 
-REM Cleanup
+:cleanup
 echo.
-echo Stopping servers...
-docker stop flask-backend
-echo Stopped!
+echo Stopping backend container...
+docker stop flask-backend 2>NUL
+echo Done!
+
+endlocal

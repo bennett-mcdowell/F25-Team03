@@ -141,3 +141,4 @@ cython_debug/
 
 # Cursor AI rules
 .cursorrules
+start-dev.bat
