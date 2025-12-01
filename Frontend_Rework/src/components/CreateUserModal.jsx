@@ -43,13 +43,18 @@ const CreateUserModal = ({ isOpen, onClose, onSubmit, userType, allowedTypes }) 
       newErrors.confirm_password = 'Passwords do not match';
     }
 
-    // Required for all user types
-    if (!formData.city.trim()) newErrors.city = 'City is required';
-    if (!formData.state.trim()) newErrors.state = 'State is required';
-    if (!formData.country.trim()) newErrors.country = 'Country is required';
+    // Location fields only required for new organizations, not for additional sponsor users
+    // (when userType is fixed to 'sponsor', we're creating additional users for existing org)
+    const isNewOrganization = allowedTypes && allowedTypes.length > 1;
+    
+    if (isNewOrganization) {
+      if (!formData.city.trim()) newErrors.city = 'City is required';
+      if (!formData.state.trim()) newErrors.state = 'State is required';
+      if (!formData.country.trim()) newErrors.country = 'Country is required';
+    }
 
-    // Sponsor-specific fields
-    if (selectedUserType === 'sponsor') {
+    // Sponsor-specific fields only for new organizations
+    if (selectedUserType === 'sponsor' && isNewOrganization) {
       if (!formData.sponsor_name.trim()) newErrors.sponsor_name = 'Sponsor name is required';
       if (!formData.description.trim()) newErrors.description = 'Description is required';
     }
@@ -226,49 +231,54 @@ const CreateUserModal = ({ isOpen, onClose, onSubmit, userType, allowedTypes }) 
             />
           </div>
 
-          <div className="form-row">
-            <div className="form-group">
-              <label htmlFor="city">City*</label>
-              <input
-                type="text"
-                id="city"
-                name="city"
-                value={formData.city}
-                onChange={handleChange}
-                className={`form-control ${errors.city ? 'error' : ''}`}
-              />
-              {errors.city && <span className="error-text">{errors.city}</span>}
-            </div>
+          {/* Location fields - only show for new organizations */}
+          {allowedTypes && allowedTypes.length > 1 && (
+            <>
+              <div className="form-row">
+                <div className="form-group">
+                  <label htmlFor="city">City*</label>
+                  <input
+                    type="text"
+                    id="city"
+                    name="city"
+                    value={formData.city}
+                    onChange={handleChange}
+                    className={`form-control ${errors.city ? 'error' : ''}`}
+                  />
+                  {errors.city && <span className="error-text">{errors.city}</span>}
+                </div>
 
-            <div className="form-group">
-              <label htmlFor="state">State*</label>
-              <input
-                type="text"
-                id="state"
-                name="state"
-                value={formData.state}
-                onChange={handleChange}
-                className={`form-control ${errors.state ? 'error' : ''}`}
-              />
-              {errors.state && <span className="error-text">{errors.state}</span>}
-            </div>
-          </div>
+                <div className="form-group">
+                  <label htmlFor="state">State*</label>
+                  <input
+                    type="text"
+                    id="state"
+                    name="state"
+                    value={formData.state}
+                    onChange={handleChange}
+                    className={`form-control ${errors.state ? 'error' : ''}`}
+                  />
+                  {errors.state && <span className="error-text">{errors.state}</span>}
+                </div>
+              </div>
 
-          <div className="form-group">
-            <label htmlFor="country">Country*</label>
-            <input
-              type="text"
-              id="country"
-              name="country"
-              value={formData.country}
-              onChange={handleChange}
-              className={`form-control ${errors.country ? 'error' : ''}`}
-            />
-            {errors.country && <span className="error-text">{errors.country}</span>}
-          </div>
+              <div className="form-group">
+                <label htmlFor="country">Country*</label>
+                <input
+                  type="text"
+                  id="country"
+                  name="country"
+                  value={formData.country}
+                  onChange={handleChange}
+                  className={`form-control ${errors.country ? 'error' : ''}`}
+                />
+                {errors.country && <span className="error-text">{errors.country}</span>}
+              </div>
+            </>
+          )}
 
-          {/* Sponsor-specific fields */}
-          {selectedUserType === 'sponsor' && (
+          {/* Sponsor-specific fields - only show for new organizations */}
+          {selectedUserType === 'sponsor' && allowedTypes && allowedTypes.length > 1 && (
             <>
               <div className="form-group">
                 <label htmlFor="sponsor_name">Sponsor Organization Name*</label>
