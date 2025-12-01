@@ -74,7 +74,9 @@ else:
     static_folder_path = None
     logging.getLogger(__name__).warning(f"Static folder not found at: {FRONTEND_DIST}")
 
-app = Flask(__name__, static_folder=static_folder_path, static_url_path='/')
+# Don't set static_url_path - let our serve_react function handle ALL routes
+# Setting static_url_path='/' creates automatic Flask routes that interfere
+app = Flask(__name__, static_folder=static_folder_path, static_url_path=None)
 
 # CORS configuration for React frontend
 # In development: Allow localhost:5173 (Vite dev server)
