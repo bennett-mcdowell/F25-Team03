@@ -234,6 +234,7 @@ export const alertService = {
   },
 };
 
+// UPDATE FOR apiService.js - Add this to the existing orderService object
 export const orderService = {
   // Get orders (role-aware: drivers see their orders, sponsors see drivers' orders, admins see all)
   getOrders: async (filters = {}) => {
@@ -254,9 +255,9 @@ export const orderService = {
     return response.data;
   },
 
-  // Cancel an order (available for PENDING or PROCESSING orders)
-  cancelOrder: async (orderId) => {
-    const response = await api.post(`/orders/${orderId}/cancel`);
+  // Cancel an order (available for PENDING orders only)
+  cancelOrder: async (orderId, reason = 'Cancelled by user') => {
+    const response = await api.post(`/orders/${orderId}/cancel`, { reason });
     return response.data;
   },
 
@@ -266,7 +267,7 @@ export const orderService = {
     return response.data;
   },
 
-  // Update order status (admin only)
+  // Update order status (admin and sponsor only)
   updateOrderStatus: async (orderId, status) => {
     const response = await api.put(`/orders/${orderId}/status`, { status });
     return response.data;

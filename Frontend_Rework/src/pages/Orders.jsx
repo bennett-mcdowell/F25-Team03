@@ -11,6 +11,7 @@ const Orders = () => {
   const [loading, setLoading] = useState(true);
   const [filter, setFilter] = useState('ALL');
   const [searchTerm, setSearchTerm] = useState('');
+  const [error, setError] = useState(null);
 
   useEffect(() => {
     loadOrders();
@@ -19,140 +20,92 @@ const Orders = () => {
   const loadOrders = async () => {
     try {
       setLoading(true);
-      // TODO: In production, this would be: const data = await orderService.getOrders();
-      // For now, using mock data
-      const mockOrders = getMockOrders();
-      setOrders(mockOrders);
-    } catch (error) {
-      console.error('Failed to load orders:', error);
+      setError(null);
+      
+      // Get orders from API
+      const response = await orderService.getOrders({ status: filter !== 'ALL' ? filter : undefined });
+      
+      // Transform API response to match frontend format
+      const transformedOrders = response.orders.map(order => ({
+        id: order.order_id,
+        orderNumber: `ORD-${String(order.order_id).padStart(6, '0')}`,
+        status: order.status,
+        createdAt: order.created_at,
+        driverId: order.driver_id,
+        driverName: order.driver_name,
+        sponsorId: order.sponsor_id,
+        sponsorName: order.sponsor_name,
+        totalPoints: order.total_points,
+        items: order.items.map(item => ({
+          productName: `Product ${item.product_id}`, // Will be enriched with actual product data
+          productId: item.product_id,
+          quantity: item.quantity,
+          pointCost: item.points_per_item
+        })),
+        trackingNumber: order.tracking_number,
+        note: order.notes
+      }));
+      
+      setOrders(transformedOrders);
+    } catch (err) {
+      console.error('Failed to load orders:', err);
+      setError('Failed to load orders. Please try again.');
     } finally {
       setLoading(false);
     }
   };
 
-  const getMockOrders = () => {
-    const baseOrders = [
-      {
-        id: 1,
-        orderNumber: 'ORD-2025-001',
-        status: 'DELIVERED',
-        createdAt: '2025-11-10T14:30:00',
-        driverId: 1,
-        driverName: 'John Driver',
-        sponsorId: 1,
-        sponsorName: 'Tech Corp',
-        totalPoints: 250,
-        items: [
-          { productName: 'Wireless Mouse', quantity: 1, pointCost: 150 },
-          { productName: 'USB Cable', quantity: 2, pointCost: 50 }
-        ],
-        trackingNumber: 'TRK123456789',
-        note: null
-      },
-      {
-        id: 2,
-        orderNumber: 'ORD-2025-002',
-        status: 'PROCESSING',
-        createdAt: '2025-11-12T09:15:00',
-        driverId: 1,
-        driverName: 'John Driver',
-        sponsorId: 1,
-        sponsorName: 'Tech Corp',
-        totalPoints: 500,
-        items: [
-          { productName: 'Mechanical Keyboard', quantity: 1, pointCost: 500 }
-        ],
-        trackingNumber: null,
-        note: 'Rush order - requested expedited shipping'
-      },
-      {
-        id: 3,
-        orderNumber: 'ORD-2025-003',
-        status: 'PENDING',
-        createdAt: '2025-11-14T11:00:00',
-        driverId: 2,
-        driverName: 'Jane Smith',
-        sponsorId: 1,
-        sponsorName: 'Tech Corp',
-        totalPoints: 100,
-        items: [
-          { productName: 'Notebook Set', quantity: 1, pointCost: 100 }
-        ],
-        trackingNumber: null,
-        note: null
-      },
-      {
-        id: 4,
-        orderNumber: 'ORD-2025-004',
-        status: 'SHIPPED',
-        createdAt: '2025-11-11T16:45:00',
-        driverId: 3,
-        driverName: 'Bob Wilson',
-        sponsorId: 2,
-        sponsorName: 'Retail Inc',
-        totalPoints: 350,
-        items: [
-          { productName: 'Headphones', quantity: 1, pointCost: 300 },
-          { productName: 'Phone Stand', quantity: 1, pointCost: 50 }
-        ],
-        trackingNumber: 'TRK987654321',
-        note: null
-      },
-      {
-        id: 5,
-        orderNumber: 'ORD-2025-005',
-        status: 'CANCELLED',
-        createdAt: '2025-11-08T13:20:00',
-        driverId: 1,
-        driverName: 'John Driver',
-        sponsorId: 1,
-        sponsorName: 'Tech Corp',
-        totalPoints: 200,
-        items: [
-          { productName: 'Coffee Mug', quantity: 2, pointCost: 100 }
-        ],
-        trackingNumber: null,
-        note: 'Cancelled by driver - duplicate order'
-      }
-    ];
-
-    // Filter based on user role
-    if (user.role === 'driver') {
-      return baseOrders.filter(order => order.driverId === user.id);
-    } else if (user.role === 'sponsor') {
-      return baseOrders.filter(order => order.sponsorId === user.id);
-    }
-    // Admin sees all orders
-    return baseOrders;
-  };
-
   const handleCancelOrder = async (orderId) => {
     try {
-      // TODO: In production: await orderService.cancelOrder(orderId);
-      console.log('Cancelling order:', orderId);
-      setOrders(orders.map(order => 
-        order.id === orderId 
-          ? { ...order, status: 'CANCELLED', note: 'Cancelled by user' }
-          : order
-      ));
-    } catch (error) {
-      console.error('Failed to cancel order:', error);
-      alert('Failed to cancel order. Please try again.');
+      setError(null);
+      const reason = 'Cancelled by user';
+      
+      await orderService.cancelOrder(orderId, reason);
+      
+      // Reload orders to get updated data
+      await loadOrders();
+      
+      alert('Order cancelled successfully. Points have been refunded.');
+    } catch (err) {
+      console.error('Failed to cancel order:', err);
+      setError(err.response?.data?.error || 'Failed to cancel order. Please try again.');
+      alert(err.response?.data?.error || 'Failed to cancel order. Please try again.');
     }
   };
 
   const handleUpdateOrder = async (orderId, updates) => {
     try {
-      // In production: await orderService.updateOrder(orderId, updates);
-      console.log('Updating order:', orderId, updates);
+      setError(null);
+      await orderService.updateOrder(orderId, updates);
+      
+      // Update local state
       setOrders(orders.map(order => 
         order.id === orderId 
           ? { ...order, ...updates }
           : order
       ));
-    } catch (error) {
-      console.error('Failed to update order:', error);
-      alert('Failed to update order. Please try again.');
+      
+      alert('Order updated successfully.');
+    } catch (err) {
+      console.error('Failed to update order:', err);
+      setError(err.response?.data?.error || 'Failed to update order. Please try again.');
+      alert(err.response?.data?.error || 'Failed to update order. Please try again.');
+    }
+  };
+
+  const handleUpdateStatus = async (orderId, newStatus) => {
+    try {
+      setError(null);
+      await orderService.updateOrderStatus(orderId, newStatus);
+      
+      // Reload orders to get updated data
+      await loadOrders();
+      
+      alert(`Order status updated to ${newStatus}`);
+    } catch (err) {
+      console.error('Failed to update order status:', err);
+      setError(err.response?.data?.error || 'Failed to update order status. Please try again.');
+      alert(err.response?.data?.error || 'Failed to update order status. Please try again.');
     }
   };
 
@@ -193,128 +146,181 @@ const Orders = () => {
 
   const stats = getOrderStats();
 
+  // Update filter and reload orders
+  const handleFilterChange = async (newFilter) => {
+    setFilter(newFilter);
+    try {
+      setLoading(true);
+      setError(null);
+      const response = await orderService.getOrders({ 
+        status: newFilter !== 'ALL' ? newFilter : undefined 
+      });
+      
+      const transformedOrders = response.orders.map(order => ({
+        id: order.order_id,
+        orderNumber: `ORD-${String(order.order_id).padStart(6, '0')}`,
+        status: order.status,
+        createdAt: order.created_at,
+        driverId: order.driver_id,
+        driverName: order.driver_name,
+        sponsorId: order.sponsor_id,
+        sponsorName: order.sponsor_name,
+        totalPoints: order.total_points,
+        items: order.items.map(item => ({
+          productName: `Product ${item.product_id}`,
+          productId: item.product_id,
+          quantity: item.quantity,
+          pointCost: item.points_per_item
+        })),
+        trackingNumber: order.tracking_number,
+        note: order.notes
+      }));
+      
+      setOrders(transformedOrders);
+    } catch (err) {
+      console.error('Failed to filter orders:', err);
+      setError('Failed to filter orders. Please try again.');
+    } finally {
+      setLoading(false);
+    }
+  };
+
   return (
     <Layout>
       <div className="orders-page">
         <div className="orders-header">
           <h1>
-            {user.role === 'admin' && 'All Orders'}
-            {user.role === 'sponsor' && 'Driver Orders'}
-            {user.role === 'driver' && 'My Orders'}
+            {user.role_name?.toLowerCase() === 'admin' && 'All Orders'}
+            {user.role_name?.toLowerCase() === 'sponsor' && 'Driver Orders'}
+            {user.role_name?.toLowerCase() === 'driver' && 'My Orders'}
           </h1>
           <p className="orders-subtitle">
-            {user.role === 'admin' && 'View and manage all orders across the system'}
-            {user.role === 'sponsor' && 'Track orders placed by your drivers'}
-            {user.role === 'driver' && 'View your purchase history and order status'}
+            {user.role_name?.toLowerCase() === 'admin' && 'View and manage all orders across the system'}
+            {user.role_name?.toLowerCase() === 'sponsor' && 'Track orders placed by your drivers'}
+            {user.role_name?.toLowerCase() === 'driver' && 'View your purchase history and order status'}
           </p>
         </div>
 
-      <div className="orders-stats">
-        <div className="stat-card">
-          <span className="stat-label">Total Orders</span>
-          <span className="stat-value">{stats.total}</span>
-        </div>
-        <div className="stat-card stat-pending">
-          <span className="stat-label">Pending</span>
-          <span className="stat-value">{stats.pending}</span>
-        </div>
-        <div className="stat-card stat-processing">
-          <span className="stat-label">Processing</span>
-          <span className="stat-value">{stats.processing}</span>
-        </div>
-        <div className="stat-card stat-shipped">
-          <span className="stat-label">Shipped</span>
-          <span className="stat-value">{stats.shipped}</span>
-        </div>
-        <div className="stat-card stat-delivered">
-          <span className="stat-label">Delivered</span>
-          <span className="stat-value">{stats.delivered}</span>
-        </div>
-        <div className="stat-card stat-cancelled">
-          <span className="stat-label">Cancelled</span>
-          <span className="stat-value">{stats.cancelled}</span>
-        </div>
-      </div>
-
-      <div className="orders-controls">
-        <div className="search-box">
-          <input
-            type="text"
-            placeholder="Search orders by number, driver, sponsor, or product..."
-            value={searchTerm}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
-        </div>
-
-        <div className="filter-buttons">
-          <button 
-            className={filter === 'ALL' ? 'active' : ''}
-            onClick={() => setFilter('ALL')}
-          >
-            All ({stats.total})
-          </button>
-          <button 
-            className={filter === 'PENDING' ? 'active' : ''}
-            onClick={() => setFilter('PENDING')}
-          >
-            Pending ({stats.pending})
-          </button>
-          <button 
-            className={filter === 'PROCESSING' ? 'active' : ''}
-            onClick={() => setFilter('PROCESSING')}
-          >
-            Processing ({stats.processing})
-          </button>
-          <button 
-            className={filter === 'SHIPPED' ? 'active' : ''}
-            onClick={() => setFilter('SHIPPED')}
-          >
-            Shipped ({stats.shipped})
-          </button>
-          <button 
-            className={filter === 'DELIVERED' ? 'active' : ''}
-            onClick={() => setFilter('DELIVERED')}
-          >
-            Delivered ({stats.delivered})
-          </button>
-          <button 
-            className={filter === 'CANCELLED' ? 'active' : ''}
-            onClick={() => setFilter('CANCELLED')}
-          >
-            Cancelled ({stats.cancelled})
-          </button>
-        </div>
-      </div>
-
-      <div className="orders-list">
-        {loading ? (
-          <div className="loading-state">
-            <p>Loading orders...</p>
+        {error && (
+          <div className="error-message" style={{ 
+            padding: '1rem', 
+            marginBottom: '1rem', 
+            backgroundColor: '#fee', 
+            color: '#c00',
+            borderRadius: '4px',
+            border: '1px solid #fcc'
+          }}>
+            {error}
           </div>
-        ) : filteredOrders.length === 0 ? (
-          <div className="empty-state">
-            <p>No orders found</p>
-            {searchTerm && (
-              <button 
-                className="btn-secondary"
-                onClick={() => setSearchTerm('')}
-              >
-                Clear Search
-              </button>
-            )}
-          </div>
-        ) : (
-          filteredOrders.map(order => (
-            <OrderCard 
-              key={order.id}
-              order={order}
-              onCancel={handleCancelOrder}
-              onUpdate={handleUpdateOrder}
-              userRole={user.role}
-            />
-          ))
         )}
-      </div>
+
+        <div className="orders-stats">
+          <div className="stat-card">
+            <span className="stat-label">Total Orders</span>
+            <span className="stat-value">{stats.total}</span>
+          </div>
+          <div className="stat-card stat-pending">
+            <span className="stat-label">Pending</span>
+            <span className="stat-value">{stats.pending}</span>
+          </div>
+          <div className="stat-card stat-processing">
+            <span className="stat-label">Processing</span>
+            <span className="stat-value">{stats.processing}</span>
+          </div>
+          <div className="stat-card stat-shipped">
+            <span className="stat-label">Shipped</span>
+            <span className="stat-value">{stats.shipped}</span>
+          </div>
+          <div className="stat-card stat-delivered">
+            <span className="stat-label">Delivered</span>
+            <span className="stat-value">{stats.delivered}</span>
+          </div>
+          <div className="stat-card stat-cancelled">
+            <span className="stat-label">Cancelled</span>
+            <span className="stat-value">{stats.cancelled}</span>
+          </div>
+        </div>
+
+        <div className="orders-controls">
+          <div className="search-box">
+            <input
+              type="text"
+              placeholder="Search orders by number, driver, sponsor, or product..."
+              value={searchTerm}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+
+          <div className="filter-buttons">
+            <button 
+              className={filter === 'ALL' ? 'active' : ''}
+              onClick={() => handleFilterChange('ALL')}
+            >
+              All ({stats.total})
+            </button>
+            <button 
+              className={filter === 'PENDING' ? 'active' : ''}
+              onClick={() => handleFilterChange('PENDING')}
+            >
+              Pending ({stats.pending})
+            </button>
+            <button 
+              className={filter === 'PROCESSING' ? 'active' : ''}
+              onClick={() => handleFilterChange('PROCESSING')}
+            >
+              Processing ({stats.processing})
+            </button>
+            <button 
+              className={filter === 'SHIPPED' ? 'active' : ''}
+              onClick={() => handleFilterChange('SHIPPED')}
+            >
+              Shipped ({stats.shipped})
+            </button>
+            <button 
+              className={filter === 'DELIVERED' ? 'active' : ''}
+              onClick={() => handleFilterChange('DELIVERED')}
+            >
+              Delivered ({stats.delivered})
+            </button>
+            <button 
+              className={filter === 'CANCELLED' ? 'active' : ''}
+              onClick={() => handleFilterChange('CANCELLED')}
+            >
+              Cancelled ({stats.cancelled})
+            </button>
+          </div>
+        </div>
+
+        <div className="orders-list">
+          {loading ? (
+            <div className="loading-state">
+              <p>Loading orders...</p>
+            </div>
+          ) : filteredOrders.length === 0 ? (
+            <div className="empty-state">
+              <p>No orders found</p>
+              {searchTerm && (
+                <button 
+                  className="btn-secondary"
+                  onClick={() => setSearchTerm('')}
+                >
+                  Clear Search
+                </button>
+              )}
+            </div>
+          ) : (
+            filteredOrders.map(order => (
+              <OrderCard 
+                key={order.id}
+                order={order}
+                onCancel={handleCancelOrder}
+                onUpdate={handleUpdateOrder}
+                onUpdateStatus={handleUpdateStatus}
+                userRole={user.role_name}
+              />
+            ))
+          )}
+        </div>
       </div>
     </Layout>
   );

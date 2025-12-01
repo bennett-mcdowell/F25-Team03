@@ -53,6 +53,7 @@ from auth import auth_bp
 from account import account_bp 
 from sponsor import sponsor_bp
 from admin_reports import admin_reports_bp
+from orders import orders_bp
 
 # App initialization
 load_dotenv()
@@ -112,6 +113,7 @@ app.register_blueprint(account_bp)
 app.register_blueprint(sponsor_bp)
 app.register_blueprint(admin_reports_bp)
 app.register_blueprint(sponsor_reports_bp)
+app.register_blueprint(orders_bp)
 
 # Serve React App (for production)
 # This catch-all route must be registered LAST so API routes take priority

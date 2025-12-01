@@ -903,6 +903,7 @@ def sponsor_bulk_drivers():
             cur.close()
         conn.close()
 
+# UPDATE FOR account.py 
 @account_bp.route('/api/purchase', methods=['POST'])
 @token_required
 def purchase_api():
@@ -911,6 +912,8 @@ def purchase_api():
     - Verify driver has enough points
     - Deduct points from balance
     - Create transaction records
+    - Create order record with order items
+    - Create alert for driver
     """
     user_id = _claims_user_id()
     
@@ -989,30 +992,83 @@ def purchase_api():
             WHERE driver_sponsor_id = %s
         """, (new_balance, driver_sponsor_id))
         
-        # 6. Create transaction records for each item
+        # 6. Create order record
+        cur.execute("""
+            INSERT INTO orders (driver_id, sponsor_id, total_points, status, created_at, updated_at)
+            VALUES (%s, %s, %s, 'PENDING', NOW(), NOW())
+        """, (driver_id, sponsor_id, total_points))
+        
+        order_id = cur.lastrowid
+        
+        # 7. Create order items
         transaction_time = datetime.datetime.now()
         for item in cart_items:
-            item_price_dollars = item.get('price', 0) * item.get('quantity', 1)
+            item_price_dollars = item.get('price', 0)
+            item_quantity = item.get('quantity', 1)
+            item_total_points = int(item_price_dollars * 100)
+            
+            # Insert order item
+            cur.execute("""
+                INSERT INTO order_items (order_id, product_id, quantity, points_per_item)
+                VALUES (%s, %s, %s, %s)
+            """, (
+                order_id,
+                item.get('id', None),  # Product ID from Fake Store API
+                item_quantity,
+                item_total_points
+            ))
+            
+            # Create transaction record
+            item_total_dollars = item_price_dollars * item_quantity
             cur.execute("""
                 INSERT INTO transactions (`date`, user_id, amount, item_id, driver_sponsor_id)
                 VALUES (%s, %s, %s, %s, %s)
             """, (
                 transaction_time,
                 user_id,
-                -item_price_dollars,  # Negative for purchases
-                item.get('id', None),  # Product ID from Fake Store API
-                driver_sponsor_id  # Attribution to specific sponsor
+                -item_total_dollars,  # Negative for purchases
+                item.get('id', None),
+                driver_sponsor_id
             ))
         
-        # 7. Calculate 1% commission for sponsor
+        # 8. Log balance change
+        cur.execute("""
+            INSERT INTO driver_balance_changes
+                (driver_id, sponsor_id, reason, points_change, balance_after)
+            VALUES (%s, %s, %s, %s, %s)
+        """, (
+            driver_id,
+            sponsor_id,
+            f"Purchase - Order #{order_id}",
+            -total_dollars,
+            new_balance
+        ))
+        
+        # 9. Create alert for driver
+        # Get user_id for the driver
+        cur.execute("SELECT user_id FROM driver WHERE driver_id = %s", (driver_id,))
+        driver_user = cur.fetchone()
+        
+        if driver_user:
+            cur.execute("""
+                INSERT INTO alerts (user_id, alert_type_id, date_created, seen, related_id, details)
+                VALUES (%s, 2, NOW(), 0, %s, %s)
+            """, (
+                driver_user['user_id'],
+                order_id,
+                f"Order #{order_id} has been placed successfully! Total: {total_points} points. Status: PENDING"
+            ))
+        
+        # 10. Calculate 1% commission for sponsor (for future invoicing)
         commission = total_dollars * 0.01
-        print(f"Commission of ${commission:.2f} for sponsor_id {sponsor_id}")
+        print(f"Commission of ${commission:.2f} for sponsor_id {sponsor_id} on order #{order_id}")
         
         conn.commit()
         
         return jsonify({
             "success": True,
             "message": "Purchase completed successfully",
+            "order_id": order_id,
             "items_purchased": len(cart_items),
             "total_spent": total_points,
             "new_balance": int(new_balance * 100),
