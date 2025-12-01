@@ -129,21 +129,28 @@ def serve_react(path):
     from flask import send_from_directory, abort
     import os
     
+    logger = logging.getLogger(__name__)
+    logger.info(f"serve_react called with path='{path}', static_folder={app.static_folder}")
+    
     # If no static folder configured, return 404
     if not app.static_folder:
+        logger.warning("No static folder configured, returning 404")
         abort(404)
     
     # If path is empty, serve index.html
     if not path:
+        logger.info("Serving index.html for root path")
         return send_from_directory(app.static_folder, 'index.html')
     
     # Check if path is a file in the dist directory
     dist_path = os.path.join(app.static_folder, path)
     if os.path.exists(dist_path) and os.path.isfile(dist_path):
+        logger.info(f"Serving static file: {path}")
         return send_from_directory(app.static_folder, path)
     
     # For any other path (like /admin, /market, etc.), serve index.html
     # React Router will handle the routing on the client side
+    logger.info(f"Serving index.html for SPA route: {path}")
     return send_from_directory(app.static_folder, 'index.html')
 
 # Optional: prove ENV values at startup (safe ones)
