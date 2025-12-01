@@ -385,9 +385,6 @@ def delete_account(account_id):
                 # Delete driver-sponsor relationships
                 cur.execute("DELETE FROM driver_sponsor WHERE driver_id = %s", (driver_id,))
                 
-                # Delete driver catalog curation
-                cur.execute("DELETE FROM driver_catalog_curation WHERE driver_id = %s", (driver_id,))
-                
             # Delete driver record
             cur.execute("DELETE FROM driver WHERE user_id = %s", (account_id,))
         
@@ -1902,73 +1899,6 @@ def sponsor_remove_driver_api():
             cur.close()
         conn.close()
         
-@account_bp.route('/api/driver/catalog/hidden', methods=['GET'])
-@token_required
-def get_hidden_products():
-    """
-    Get list of product IDs that the current driver has hidden (per sponsor)
-    Optionally accepts ?sponsor_id=X to filter by sponsor
-    """
-    user_id = _claims_user_id()
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    try:
-        user_id = int(user_id)
-    except Exception:
-        return jsonify({"error": "Invalid user ID"}), 401
-    
-    sponsor_id = request.args.get('sponsor_id')
-    
-    conn = None
-    cur = None
-    try:
-        conn = get_db_connection()
-        cur = conn.cursor(dictionary=True)
-        
-        # Get driver_id
-        cur.execute("""
-            SELECT d.driver_id 
-            FROM driver d
-            JOIN `user` u ON d.user_id = u.user_id
-            WHERE u.user_id = %s AND u.type_id = 3
-        """, (user_id,))
-        d = cur.fetchone()
-        
-        if not d:
-            return jsonify({"error": "Driver not found"}), 404
-        
-        driver_id = d["driver_id"]
-        
-        # Get all hidden product IDs (optionally filtered by sponsor)
-        if sponsor_id:
-            cur.execute("""
-                SELECT product_id, sponsor_id
-                FROM driver_catalog_curation
-                WHERE driver_id = %s AND sponsor_id = %s AND is_hidden = 1
-            """, (driver_id, sponsor_id))
-        else:
-            cur.execute("""
-                SELECT product_id, sponsor_id
-                FROM driver_catalog_curation
-                WHERE driver_id = %s AND is_hidden = 1
-            """, (driver_id,))
-        
-        hidden_products = [{"product_id": row["product_id"], "sponsor_id": row["sponsor_id"]} 
-                          for row in cur.fetchall()]
-        
-        return jsonify({
-            "hidden_products": hidden_products,
-            "driver_id": driver_id
-        }), 200
-        
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
-
-
 # =========================
 # DRIVER CATALOG (Market Products)
 # =========================
@@ -2004,19 +1934,7 @@ def get_driver_catalog():
         if not products:
             return jsonify({"error": "Failed to fetch products"}), 500
         
-        # Optionally get hidden products for a specific sponsor
         sponsor_id = request.args.get('sponsor_id')
-        if sponsor_id:
-            cur.execute("""
-                SELECT product_id
-                FROM driver_catalog_curation
-                WHERE driver_id = %s AND sponsor_id = %s AND is_hidden = 1
-            """, (driver_id, sponsor_id))
-            
-            hidden_product_ids = {row['product_id'] for row in cur.fetchall()}
-            
-            # Filter out hidden products for this sponsor
-            products = [p for p in products if p['id'] not in hidden_product_ids]
         
         return jsonify({
             "products": products,
@@ -2029,97 +1947,6 @@ def get_driver_catalog():
         import traceback
         traceback.print_exc()
         return jsonify({"error": str(e)}), 500
-    finally:
-        if cur:
-            cur.close()
-        if conn:
-            conn.close()
-
-
-@account_bp.route('/api/driver/catalog/toggle', methods=['POST'])
-@token_required
-def toggle_product_visibility():
-    """
-    Toggle product visibility for current driver (per sponsor)
-    Body: { "product_id": 123, "sponsor_id": 456, "is_hidden": true/false }
-    """
-    user_id = _claims_user_id()
-    if not user_id:
-        return jsonify({"error": "Unauthorized"}), 401
-    
-    try:
-        user_id = int(user_id)
-    except Exception:
-        return jsonify({"error": "Invalid user ID"}), 401
-    
-    data = request.get_json() or {}
-    product_id = data.get('product_id')
-    sponsor_id = data.get('sponsor_id')
-    is_hidden = data.get('is_hidden', True)
-    
-    if not product_id:
-        return jsonify({"error": "product_id required"}), 400
-    
-    if not sponsor_id:
-        return jsonify({"error": "sponsor_id required"}), 400
-    
-    conn = None
-    cur = None
-    try:
-        conn = get_db_connection()
-        conn.autocommit = False
-        cur = conn.cursor(dictionary=True)
-        
-        # Verify user is a driver
-        cur.execute("""
-            SELECT d.driver_id 
-            FROM driver d
-            JOIN `user` u ON d.user_id = u.user_id
-            WHERE u.user_id = %s AND u.type_id = 3
-        """, (user_id,))
-        d = cur.fetchone()
-        
-        if not d:
-            return jsonify({"error": "Only drivers can curate catalog"}), 403
-        
-        driver_id = d["driver_id"]
-        
-        # Verify driver has relationship with this sponsor
-        cur.execute("""
-            SELECT driver_sponsor_id 
-            FROM driver_sponsor 
-            WHERE driver_id = %s AND sponsor_id = %s AND status = 'ACTIVE'
-        """, (driver_id, sponsor_id))
-        
-        if not cur.fetchone():
-            return jsonify({"error": "Driver not associated with this sponsor"}), 403
-        
-        # Upsert curation record (now includes sponsor_id)
-        cur.execute("""
-            INSERT INTO driver_catalog_curation (driver_id, sponsor_id, product_id, is_hidden, hidden_at)
-            VALUES (%s, %s, %s, %s, NOW())
-            ON DUPLICATE KEY UPDATE 
-                is_hidden = VALUES(is_hidden),
-                hidden_at = IF(VALUES(is_hidden) = 1, NOW(), hidden_at)
-        """, (driver_id, sponsor_id, product_id, 1 if is_hidden else 0))
-        
-        conn.commit()
-        
-        return jsonify({
-            "success": True,
-            "product_id": product_id,
-            "sponsor_id": sponsor_id,
-            "is_hidden": is_hidden
-        }), 200
-        
-    except Exception as e:
-        if conn:
-            conn.rollback()
-        print(f"Error toggling product visibility: {e}")
-        import traceback
-        traceback.print_exc()
-        return jsonify({"error": str(e)}), 500
-        
     finally:
         if cur:
             cur.close()
