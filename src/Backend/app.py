@@ -59,15 +59,20 @@ from orders import orders_bp
 load_dotenv()
 configure_logging()  # <<— initialize logging before anything logs
 
-# Determine static folder path (works both locally and in Docker)
-if os.path.exists('../Frontend_Rework/dist'):
-    # Docker: /app/Backend -> /app/Frontend_Rework/dist
-    static_folder_path = '../Frontend_Rework/dist'
-elif os.path.exists('../../Frontend_Rework/dist'):
-    # Local: src/Backend -> Frontend_Rework/dist
-    static_folder_path = '../../Frontend_Rework/dist'
+# Determine static folder path using absolute paths
+# This is more reliable than relative paths, especially with PM2
+from pathlib import Path
+
+BACKEND_DIR = Path(__file__).parent.resolve()
+PROJECT_ROOT = BACKEND_DIR.parent.parent  # F25-Team03/
+FRONTEND_DIST = PROJECT_ROOT / 'Frontend_Rework' / 'dist'
+
+if FRONTEND_DIST.exists() and FRONTEND_DIST.is_dir():
+    static_folder_path = str(FRONTEND_DIST)
+    logging.getLogger(__name__).info(f"Static folder set to: {static_folder_path}")
 else:
-    static_folder_path = None  # Will cause Flask to not serve static files
+    static_folder_path = None
+    logging.getLogger(__name__).warning(f"Static folder not found at: {FRONTEND_DIST}")
 
 app = Flask(__name__, static_folder=static_folder_path, static_url_path='/')
 
