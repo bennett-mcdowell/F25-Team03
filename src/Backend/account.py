@@ -2495,3 +2495,147 @@ def sponsor_create_user():
     finally:
         if conn:
             conn.close()
+
+
+# ==================== ALERTS ENDPOINTS ====================
+
+@account_bp.route('/api/alerts', methods=['GET'])
+@token_required
+def get_alerts():
+    """Get all alerts for the current user"""
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor(dictionary=True)
+        
+        # Get alerts with alert type information
+        cur.execute("""
+            SELECT 
+                a.alert_id,
+                a.alert_type_id,
+                atd.alert_type as type,
+                a.details as message,
+                a.date_created as created_at,
+                a.seen as is_read,
+                a.related_id
+            FROM alerts a
+            JOIN alert_type_definitions atd ON a.alert_type_id = atd.alert_type_id
+            WHERE a.user_id = %s
+            ORDER BY a.date_created DESC
+        """, (user_id,))
+        
+        alerts = cur.fetchall()
+        
+        # Convert datetime to ISO format
+        for alert in alerts:
+            if alert.get('created_at'):
+                alert['created_at'] = alert['created_at'].isoformat()
+        
+        return jsonify({"alerts": alerts}), 200
+        
+    except Exception as e:
+        logging.error(f"Error fetching alerts: {e}")
+        return jsonify({"error": "Failed to fetch alerts"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@account_bp.route('/api/alerts/<int:alert_id>/read', methods=['PUT'])
+@token_required
+def mark_alert_as_read(alert_id):
+    """Mark a specific alert as read"""
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor(dictionary=True)
+        
+        # Verify the alert belongs to this user and update it
+        cur.execute("""
+            UPDATE alerts 
+            SET seen = TRUE 
+            WHERE alert_id = %s AND user_id = %s
+        """, (alert_id, user_id))
+        
+        conn.commit()
+        
+        if cur.rowcount == 0:
+            return jsonify({"error": "Alert not found"}), 404
+        
+        return jsonify({"message": "Alert marked as read"}), 200
+        
+    except Exception as e:
+        logging.error(f"Error marking alert as read: {e}")
+        return jsonify({"error": "Failed to mark alert as read"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@account_bp.route('/api/alerts/read-all', methods=['PUT'])
+@token_required
+def mark_all_alerts_as_read():
+    """Mark all alerts as read for the current user"""
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        
+        cur.execute("""
+            UPDATE alerts 
+            SET seen = TRUE 
+            WHERE user_id = %s AND seen = FALSE
+        """, (user_id,))
+        
+        conn.commit()
+        
+        return jsonify({"message": f"Marked {cur.rowcount} alerts as read"}), 200
+        
+    except Exception as e:
+        logging.error(f"Error marking all alerts as read: {e}")
+        return jsonify({"error": "Failed to mark alerts as read"}), 500
+    finally:
+        if conn:
+            conn.close()
+
+
+@account_bp.route('/api/alerts/<int:alert_id>', methods=['DELETE'])
+@token_required
+def delete_alert(alert_id):
+    """Delete a specific alert"""
+    user_id = _claims_user_id()
+    if not user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    try:
+        cur = conn.cursor()
+        
+        # Verify the alert belongs to this user and delete it
+        cur.execute("""
+            DELETE FROM alerts 
+            WHERE alert_id = %s AND user_id = %s
+        """, (alert_id, user_id))
+        
+        conn.commit()
+        
+        if cur.rowcount == 0:
+            return jsonify({"error": "Alert not found"}), 404
+        
+        return jsonify({"message": "Alert deleted"}), 200
+        
+    except Exception as e:
+        logging.error(f"Error deleting alert: {e}")
+        return jsonify({"error": "Failed to delete alert"}), 500
+    finally:
+        if conn:
+            conn.close()

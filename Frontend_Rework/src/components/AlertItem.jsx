@@ -7,18 +7,28 @@ import '../styles/Alerts.css';
  */
 const AlertItem = ({ alert, onMarkAsRead }) => {
   const getAlertIcon = (type) => {
-    switch (type) {
-      case 'points_added':
+    // Handle database alert types
+    const typeUpper = type?.toUpperCase();
+    
+    switch (typeUpper) {
+      case 'BALANCE_CHANGE':
+        return '';
+      case 'ACCOUNT_CHANGE':
+        return '';
+      case 'SPONSORSHIP_CHANGE':
+        return '';
+      // Legacy types for backwards compatibility
+      case 'POINTS_ADDED':
         return '+';
-      case 'points_removed':
+      case 'POINTS_REMOVED':
         return '-';
-      case 'order_placed':
+      case 'ORDER_PLACED':
         return '→';
-      case 'driver_dropped':
+      case 'DRIVER_DROPPED':
         return '!';
-      case 'application_approved':
+      case 'APPLICATION_APPROVED':
         return '✓';
-      case 'application_rejected':
+      case 'APPLICATION_REJECTED':
         return '✗';
       default:
         return '•';
@@ -26,15 +36,25 @@ const AlertItem = ({ alert, onMarkAsRead }) => {
   };
 
   const getAlertClass = (type) => {
-    switch (type) {
-      case 'driver_dropped':
-      case 'application_rejected':
-      case 'points_removed':
-        return 'alert-item-warning';
-      case 'application_approved':
-      case 'points_added':
+    // Handle database alert types
+    const typeUpper = type?.toUpperCase();
+    
+    switch (typeUpper) {
+      case 'BALANCE_CHANGE':
         return 'alert-item-success';
-      case 'order_placed':
+      case 'ACCOUNT_CHANGE':
+        return 'alert-item-info';
+      case 'SPONSORSHIP_CHANGE':
+        return 'alert-item-info';
+      // Legacy types
+      case 'DRIVER_DROPPED':
+      case 'APPLICATION_REJECTED':
+      case 'POINTS_REMOVED':
+        return 'alert-item-warning';
+      case 'APPLICATION_APPROVED':
+      case 'POINTS_ADDED':
+        return 'alert-item-success';
+      case 'ORDER_PLACED':
         return 'alert-item-info';
       default:
         return 'alert-item-default';

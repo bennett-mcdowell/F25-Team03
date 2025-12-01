@@ -3,6 +3,7 @@ import { useAuth } from '../contexts/AuthContext';
 import Layout from '../components/Layout';
 import AlertItem from '../components/AlertItem';
 import AlertPreferences from '../components/AlertPreferences';
+import alertService from '../services/alertService';
 import '../styles/Alerts.css';
 
 const Inbox = () => {
@@ -23,51 +24,19 @@ const Inbox = () => {
 
   const fetchAlertsAndPreferences = async () => {
     setLoading(true);
+    setError('');
     try {
-      // TODO: Replace with actual API calls when backend is ready
-      // const alertsData = await alertService.getAlertHistory();
-      // const prefsData = await alertService.getAlertPreferences();
+      const alertsData = await alertService.getAlerts();
+      setAlerts(alertsData || []);
       
-      // Mock data for now
-      const mockAlerts = [
-        {
-          alert_id: 1,
-          type: 'points_added',
-          message: 'You received 50 points from Speedy Tires!',
-          created_at: new Date(Date.now() - 3600000).toISOString(), // 1 hour ago
-          is_read: false,
-        },
-        {
-          alert_id: 2,
-          type: 'order_placed',
-          message: 'Your order #1234 has been placed successfully.',
-          created_at: new Date(Date.now() - 7200000).toISOString(), // 2 hours ago
-          is_read: false,
-        },
-        {
-          alert_id: 3,
-          type: 'points_removed',
-          message: '25 points were deducted for order #1234.',
-          created_at: new Date(Date.now() - 86400000).toISOString(), // 1 day ago
-          is_read: true,
-        },
-        {
-          alert_id: 4,
-          type: 'application_approved',
-          message: 'Your application to FuelMax has been approved!',
-          created_at: new Date(Date.now() - 172800000).toISOString(), // 2 days ago
-          is_read: true,
-        },
-      ];
-
-      setAlerts(mockAlerts);
+      // Keep default preferences for now since backend doesn't store them yet
       setPreferences({
         points_alert: true,
         order_alert: true,
       });
     } catch (err) {
       setError('Failed to load alerts');
-      console.error(err);
+      console.error('Error loading alerts:', err);
     } finally {
       setLoading(false);
     }
@@ -75,8 +44,7 @@ const Inbox = () => {
 
   const handleMarkAsRead = async (alertId) => {
     try {
-      // TODO: API call to mark alert as read
-      // await alertService.markAlertAsRead(alertId);
+      await alertService.markAlertAsRead(alertId);
       
       setAlerts(prev =>
         prev.map(alert =>
@@ -87,19 +55,20 @@ const Inbox = () => {
       );
     } catch (err) {
       console.error('Failed to mark alert as read:', err);
+      setError('Failed to mark alert as read');
     }
   };
 
   const handleMarkAllAsRead = async () => {
     try {
-      // TODO: API call to mark all alerts as read
-      // await alertService.markAllAlertsAsRead();
+      await alertService.markAllAlertsAsRead();
       
       setAlerts(prev =>
         prev.map(alert => ({ ...alert, is_read: true }))
       );
     } catch (err) {
       console.error('Failed to mark all alerts as read:', err);
+      setError('Failed to mark all alerts as read');
     }
   };
 
