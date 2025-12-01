@@ -39,13 +39,15 @@ const OrderCard = ({ order, onCancel, onUpdate, onUpdateStatus, userRole }) => {
 
   const canUpdateOrder = () => {
     // Admins and sponsors can update orders that aren't DELIVERED or CANCELLED
-    return (userRole === 'admin' || userRole === 'sponsor') && 
+    const role = userRole?.toLowerCase();
+    return (role === 'admin' || role === 'sponsor') && 
            !['DELIVERED', 'CANCELLED'].includes(order.status);
   };
 
   const canUpdateStatus = () => {
     // Admins and sponsors can update status
-    return (userRole === 'admin' || userRole === 'sponsor') &&
+    const role = userRole?.toLowerCase();
+    return (role === 'admin' || role === 'sponsor') &&
            !['DELIVERED', 'CANCELLED'].includes(order.status);
   };
 
@@ -147,8 +149,10 @@ const OrderCard = ({ order, onCancel, onUpdate, onUpdateStatus, userRole }) => {
         <div className="order-actions">
           {canCancelOrder() && (
             <button 
-              className="btn-cancel"
-              onClick={() => setShowCancelModal(true)}
+              className="btn-danger"
+              onClick={() => {
+                setShowCancelModal(true);
+              }}
             >
               Cancel Order
             </button>
@@ -170,23 +174,25 @@ const OrderCard = ({ order, onCancel, onUpdate, onUpdateStatus, userRole }) => {
               className="btn-primary"
               onClick={() => setShowStatusModal(true)}
             >
-              Update Status
+              {order.status === 'PENDING' ? 'Mark as Processing' : 
+               order.status === 'PROCESSING' ? 'Mark as Shipped' :
+               order.status === 'SHIPPED' ? 'Mark as Delivered' :
+               'Update Status'}
             </button>
           )}
         </div>
       </div>
 
       {/* Cancel Order Modal */}
-      {showCancelModal && (
-        <ConfirmationModal
-          title="Cancel Order"
-          message={`Are you sure you want to cancel Order #${order.orderNumber}? This action cannot be undone and points will be refunded.`}
-          onConfirm={handleCancelConfirm}
-          onCancel={() => setShowCancelModal(false)}
-          confirmText="Yes, Cancel Order"
-          cancelText="Keep Order"
-        />
-      )}
+      <ConfirmationModal
+        isOpen={showCancelModal}
+        title="Cancel Order"
+        message={`Are you sure you want to cancel Order #${order.orderNumber}? This action cannot be undone and points will be refunded.`}
+        onConfirm={handleCancelConfirm}
+        onClose={() => setShowCancelModal(false)}
+        confirmText="Yes, Cancel Order"
+        confirmButtonClass="btn-danger"
+      />
 
       {/* Update Order Details Modal */}
       {showUpdateModal && (

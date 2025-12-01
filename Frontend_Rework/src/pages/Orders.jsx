@@ -58,9 +58,7 @@ const Orders = () => {
   const handleCancelOrder = async (orderId) => {
     try {
       setError(null);
-      const reason = window.prompt('Please enter a reason for cancellation (optional):') || 'Cancelled by user';
-      
-      if (!reason) return; // User cancelled the prompt
+      const reason = 'Cancelled by user';
       
       await orderService.cancelOrder(orderId, reason);
       
@@ -192,14 +190,14 @@ const Orders = () => {
       <div className="orders-page">
         <div className="orders-header">
           <h1>
-            {user.role === 'admin' && 'All Orders'}
-            {user.role === 'sponsor' && 'Driver Orders'}
-            {user.role === 'driver' && 'My Orders'}
+            {user.role_name?.toLowerCase() === 'admin' && 'All Orders'}
+            {user.role_name?.toLowerCase() === 'sponsor' && 'Driver Orders'}
+            {user.role_name?.toLowerCase() === 'driver' && 'My Orders'}
           </h1>
           <p className="orders-subtitle">
-            {user.role === 'admin' && 'View and manage all orders across the system'}
-            {user.role === 'sponsor' && 'Track orders placed by your drivers'}
-            {user.role === 'driver' && 'View your purchase history and order status'}
+            {user.role_name?.toLowerCase() === 'admin' && 'View and manage all orders across the system'}
+            {user.role_name?.toLowerCase() === 'sponsor' && 'Track orders placed by your drivers'}
+            {user.role_name?.toLowerCase() === 'driver' && 'View your purchase history and order status'}
           </p>
         </div>
 
@@ -318,7 +316,7 @@ const Orders = () => {
                 onCancel={handleCancelOrder}
                 onUpdate={handleUpdateOrder}
                 onUpdateStatus={handleUpdateStatus}
-                userRole={user.role}
+                userRole={user.role_name}
               />
             ))
           )}

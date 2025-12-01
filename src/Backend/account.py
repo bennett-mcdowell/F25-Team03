@@ -1045,13 +1045,19 @@ def purchase_api():
         ))
         
         # 9. Create alert for driver
-        cur.execute("""
-            INSERT INTO driver_alerts (driver_id, alert_type_id, message, is_read, created_at)
-            VALUES (%s, 2, %s, 0, NOW())
-        """, (
-            driver_id,
-            f"Order #{order_id} has been placed successfully! Total: {total_points} points. Status: PENDING"
-        ))
+        # Get user_id for the driver
+        cur.execute("SELECT user_id FROM driver WHERE driver_id = %s", (driver_id,))
+        driver_user = cur.fetchone()
+        
+        if driver_user:
+            cur.execute("""
+                INSERT INTO alerts (user_id, alert_type_id, date_created, seen, related_id, details)
+                VALUES (%s, 2, NOW(), 0, %s, %s)
+            """, (
+                driver_user['user_id'],
+                order_id,
+                f"Order #{order_id} has been placed successfully! Total: {total_points} points. Status: PENDING"
+            ))
         
         # 10. Calculate 1% commission for sponsor (for future invoicing)
         commission = total_dollars * 0.01

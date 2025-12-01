@@ -413,13 +413,19 @@ def cancel_order(order_id):
         """, (cancel_note, order_id))
         
         # Create alert for driver
-        cur.execute("""
-            INSERT INTO alerts (driver_id, alert_type_id, message, is_read, created_at)
-            VALUES (%s, 2, %s, 0, NOW())
-        """, (
-            order['driver_id'],
-            f"Order #{order_id} has been cancelled. {int(refund_amount * 100)} points have been refunded to your account."
-        ))
+        # Get user_id for the driver
+        cur.execute("SELECT user_id FROM driver WHERE driver_id = %s", (order['driver_id'],))
+        driver_user = cur.fetchone()
+        
+        if driver_user:
+            cur.execute("""
+                INSERT INTO alerts (user_id, alert_type_id, date_created, seen, related_id, details)
+                VALUES (%s, 2, NOW(), 0, %s, %s)
+            """, (
+                driver_user['user_id'],
+                order_id,
+                f"Order #{order_id} has been cancelled. {int(refund_amount * 100)} points have been refunded to your account."
+            ))
         
         conn.commit()
         
@@ -660,10 +666,15 @@ def update_order_status(order_id):
         
         alert_message = alert_messages.get(new_status, f"Order #{order_id} status updated to {new_status}")
         
-        cur.execute("""
-            INSERT INTO driver_alerts (driver_id, alert_type_id, message, is_read, created_at)
-            VALUES (%s, 2, %s, 0, NOW())
-        """, (order['driver_id'], alert_message))
+        # Get user_id for the driver
+        cur.execute("SELECT user_id FROM driver WHERE driver_id = %s", (order['driver_id'],))
+        driver_user = cur.fetchone()
+        
+        if driver_user:
+            cur.execute("""
+                INSERT INTO alerts (user_id, alert_type_id, date_created, seen, related_id, details)
+                VALUES (%s, 2, NOW(), 0, %s, %s)
+            """, (driver_user['user_id'], order_id, alert_message))
         
         conn.commit()
         
