@@ -338,6 +338,23 @@
 }
 
 /* Order Action Buttons */
+.order-actions .btn-danger {
+  padding: 10px 20px;
+  background: white;
+  border: 2px solid #e74c3c;
+  color: #e74c3c;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.order-actions .btn-danger:hover {
+  background: #e74c3c;
+  color: white;
+}
+
 .order-actions .btn-cancel {
   padding: 10px 20px;
   background: white;
@@ -369,6 +386,23 @@
 
 .order-actions .btn-secondary:hover {
   background: #95a5a6;
+  color: white;
+}
+
+.order-actions .btn-primary {
+  padding: 10px 20px;
+  background: white;
+  border: 2px solid #3498db;
+  color: #3498db;
+  border-radius: 6px;
+  cursor: pointer;
+  font-size: 0.95rem;
+  font-weight: 600;
+  transition: all 0.2s ease;
+}
+
+.order-actions .btn-primary:hover {
+  background: #3498db;
   color: white;
 }
 

@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import Layout from '../components/Layout';
 import ReportFilters from '../components/ReportFilters';
 import ReportTable from '../components/ReportTable';
-import { sponsorService } from '../services/apiService';
+import { sponsorService, reportService } from '../services/apiService';
 import '../styles/Dashboard.css';
 
 const SponsorReports = () => {
@@ -32,79 +32,43 @@ const SponsorReports = () => {
     }
   };
 
-  const generateReport = async () => {
-    setLoading(true);
-    setError('');
-    try {
-      // TODO: Replace with actual API calls when backend is ready
-      // const data = await reportService.generateReport(activeReport, filters);
-      
-      // Mock data for now
-      const mockData = generateMockData(activeReport, filters);
-      setReportData(mockData);
-    } catch (err) {
-      setError('Failed to generate report');
-      console.error(err);
-    } finally {
-      setLoading(false);
-    }
-  };
+const generateReport = async () => {
+  setLoading(true);
+  setError('');
 
-  const generateMockData = (reportType, filters) => {
-    if (reportType === 'driver_points') {
-      return [
-        {
-          driver_name: 'Danny Driver',
-          total_points: 150.00,
-          point_change: '+50',
-          date: '2025-11-10',
-          sponsor: 'Speedy Tires',
-          reason: 'Monthly bonus',
-        },
-        {
-          driver_name: 'Danny Driver',
-          total_points: 100.00,
-          point_change: '-25',
-          date: '2025-11-08',
-          sponsor: 'Speedy Tires',
-          reason: 'Purchase order #1234',
-        },
-        {
-          driver_name: 'Dina Driver',
-          total_points: 200.00,
-          point_change: '+100',
-          date: '2025-11-05',
-          sponsor: 'Speedy Tires',
-          reason: 'Performance reward',
-        },
-      ];
-    } else if (reportType === 'sponsor_audit') {
-      return [
-        {
-          date: '2025-11-10 14:23:15',
-          category: 'Point Change',
-          user: 'Sam Sponsor',
-          action: 'Added 50 points to Danny Driver',
-          details: 'Reason: Monthly bonus',
-        },
-        {
-          date: '2025-11-10 10:15:22',
-          category: 'Driver Status',
-          user: 'Sam Sponsor',
-          action: 'Approved driver application',
-          details: 'Driver: Dina Driver',
-        },
-        {
-          date: '2025-11-09 16:45:30',
-          category: 'Point Change',
-          user: 'Sam Sponsor',
-          action: 'Deducted 25 points from Danny Driver',
-          details: 'Reason: Purchase order #1234',
-        },
-      ];
+  console.log('Current filters:', filters);  // ADD THIS
+  console.log('Active report:', activeReport);  // ADD THIS
+  
+  
+
+  try {
+    let response;
+    
+    if (activeReport === 'driver_points') {
+      response = await reportService.getSponsorPointsReport({
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        driverId: filters.driverId,
+      });
+    } else if (activeReport === 'sponsor_audit') {
+      response = await reportService.getAuditLogReport({
+        startDate: filters.startDate,
+        endDate: filters.endDate,
+        category: filters.category,
+      }, 'sponsor');
     }
-    return [];
-  };
+    
+    console.log('Full response:', response);  // ADD THIS
+    console.log('Response.data:', response?.data);  // ADD THIS
+    
+    setReportData(Array.isArray(response?.data) ? response.data : []);
+  } catch (err) {
+    setError('Failed to generate report');
+    console.error(err);
+  } finally {
+    setLoading(false);
+  }
+};
 
   const downloadCSV = () => {
     if (!reportData || reportData.length === 0) {
@@ -116,8 +80,7 @@ const SponsorReports = () => {
     const headers = columns.map(col => col.label).join(',');
     const rows = reportData.map(row => 
       columns.map(col => {
-        const value = row[col.key];
-        // Escape commas and quotes in CSV
+        const value = row[col.key] ?? '';
         const escaped = String(value).replace(/"/g, '""');
         return `"${escaped}"`;
       }).join(',')
@@ -139,7 +102,7 @@ const SponsorReports = () => {
     if (reportType === 'driver_points') {
       return [
         { key: 'driver_name', label: 'Driver Name' },
-        { key: 'total_points', label: 'Total Points', render: (val) => `${val.toFixed(2)}` },
+        { key: 'total_points', label: 'Total Points', render: (val) => val?.toFixed?.(2) ?? val ?? '0.00' },
         { key: 'point_change', label: 'Point Change' },
         { key: 'date', label: 'Date' },
         { key: 'sponsor', label: 'Sponsor' },
@@ -167,7 +130,7 @@ const SponsorReports = () => {
 
         {error && <div className="error-message">{error}</div>}
 
-        {/* Report Type Selection */}
+
         <div className="report-selector">
           <button
             className={`report-tab ${activeReport === 'driver_points' ? 'active' : ''}`}
@@ -183,7 +146,7 @@ const SponsorReports = () => {
           </button>
         </div>
 
-        {/* Report Description */}
+
         <div className="report-description">
           {activeReport === 'driver_points' && (
             <p>Track driver points, changes, and history with detailed information about each transaction.</p>
@@ -193,7 +156,7 @@ const SponsorReports = () => {
           )}
         </div>
 
-        {/* Filters */}
+
         <div className="card">
           <h3>Report Filters</h3>
           <ReportFilters
@@ -220,7 +183,7 @@ const SponsorReports = () => {
           </div>
         </div>
 
-        {/* Report Table */}
+
         <div className="card">
           <h3>
             {activeReport === 'driver_points' ? 'Driver Point Tracking Report' : 'Audit Log Report'}
@@ -243,3 +206,4 @@ const SponsorReports = () => {
 };
 
 export default SponsorReports;
+

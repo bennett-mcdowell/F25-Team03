@@ -7,7 +7,7 @@ from flask_jwt_extended import JWTManager
 from dotenv import load_dotenv
 import base64
 import os
-
+from sponsor_reports import sponsor_reports_bp
 
 # ------------------------------
 # Logging setup (stdout + optional file)
@@ -52,20 +52,27 @@ from routes import routes_bp
 from auth import auth_bp
 from account import account_bp 
 from sponsor import sponsor_bp
+from admin_reports import admin_reports_bp
+from orders import orders_bp
 
 # App initialization
 load_dotenv()
 configure_logging()  # <<— initialize logging before anything logs
 
-# Determine static folder path (works both locally and in Docker)
-if os.path.exists('../Frontend_Rework/dist'):
-    # Docker: /app/Backend -> /app/Frontend_Rework/dist
-    static_folder_path = '../Frontend_Rework/dist'
-elif os.path.exists('../../Frontend_Rework/dist'):
-    # Local: src/Backend -> Frontend_Rework/dist
-    static_folder_path = '../../Frontend_Rework/dist'
+# Determine static folder path using absolute paths
+# This is more reliable than relative paths, especially with PM2
+from pathlib import Path
+
+BACKEND_DIR = Path(__file__).parent.resolve()
+PROJECT_ROOT = BACKEND_DIR.parent.parent  # F25-Team03/
+FRONTEND_DIST = PROJECT_ROOT / 'Frontend_Rework' / 'dist'
+
+if FRONTEND_DIST.exists() and FRONTEND_DIST.is_dir():
+    static_folder_path = str(FRONTEND_DIST)
+    logging.getLogger(__name__).info(f"Static folder set to: {static_folder_path}")
 else:
-    static_folder_path = None  # Will cause Flask to not serve static files
+    static_folder_path = None
+    logging.getLogger(__name__).warning(f"Static folder not found at: {FRONTEND_DIST}")
 
 app = Flask(__name__, static_folder=static_folder_path, static_url_path='/')
 
@@ -104,26 +111,39 @@ jwt = JWTManager(app)
 
 cache = Cache(app, config={'CACHE_TYPE': 'SimpleCache'})
 
-# Register Blueprints
+# Register Blueprints (these take priority over catch-all routes)
 app.register_blueprint(routes_bp)
 app.register_blueprint(auth_bp)
 app.register_blueprint(account_bp)
 app.register_blueprint(sponsor_bp)
+app.register_blueprint(admin_reports_bp)
+app.register_blueprint(sponsor_reports_bp)
+app.register_blueprint(orders_bp)
 
 # Serve React App (for production)
+# This catch-all route must be registered LAST so API routes take priority
 @app.route('/', defaults={'path': ''})
 @app.route('/<path:path>')
 def serve_react(path):
     """Serve React app for all routes (SPA)"""
-    from flask import send_from_directory
+    from flask import send_from_directory, abort
     import os
+    
+    # If no static folder configured, return 404
+    if not app.static_folder:
+        abort(404)
+    
+    # If path is empty, serve index.html
+    if not path:
+        return send_from_directory(app.static_folder, 'index.html')
     
     # Check if path is a file in the dist directory
     dist_path = os.path.join(app.static_folder, path)
-    if path and os.path.exists(dist_path) and os.path.isfile(dist_path):
+    if os.path.exists(dist_path) and os.path.isfile(dist_path):
         return send_from_directory(app.static_folder, path)
     
-    # Otherwise serve index.html (React Router will handle routing)
+    # For any other path (like /admin, /market, etc.), serve index.html
+    # React Router will handle the routing on the client side
     return send_from_directory(app.static_folder, 'index.html')
 
 # Optional: prove ENV values at startup (safe ones)

@@ -17,6 +17,7 @@ const Market = () => {
   const [showHidden, setShowHidden] = useState(false);
   const [notification, setNotification] = useState(null);
   const [selectedSponsor, setSelectedSponsor] = useState(null);
+  const [searchQuery, setSearchQuery] = useState('');
   
   // Get driver's sponsors if they are a driver
   const driverSponsors = useMemo(() => {
@@ -79,14 +80,17 @@ const Market = () => {
     return [...new Set(products.map((p) => p.category))];
   }, [products]);
 
-  // Filter products by category and hidden status (memoized for performance)
+  // Filter products by category, search query, and hidden status (memoized for performance)
   const filteredProducts = useMemo(() => {
     return products.filter((product) => {
       const matchesCategory = selectedCategory === 'all' || product.category === selectedCategory;
       const matchesHidden = showHidden || !isHidden(product.id);
-      return matchesCategory && matchesHidden;
+      const matchesSearch = searchQuery === '' || 
+        product.title.toLowerCase().includes(searchQuery.toLowerCase()) ||
+        (product.description && product.description.toLowerCase().includes(searchQuery.toLowerCase()));
+      return matchesCategory && matchesHidden && matchesSearch;
     });
-  }, [products, selectedCategory, showHidden, isHidden]);
+  }, [products, selectedCategory, showHidden, isHidden, searchQuery]);
 
   // Handlers
   const handleAddToCart = (product) => {
@@ -172,6 +176,17 @@ const Market = () => {
               Cart ({cartItemCount})
             </button>
           </div>
+        </div>
+
+        {/* Search Bar */}
+        <div className="dashboard-card search-bar-card">
+          <input
+            type="text"
+            className="search-input"
+            placeholder="Search products..."
+            value={searchQuery}
+            onChange={(e) => setSearchQuery(e.target.value)}
+          />
         </div>
 
         {/* Sponsor Selector for Drivers */}

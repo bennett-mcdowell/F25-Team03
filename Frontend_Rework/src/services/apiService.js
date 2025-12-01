@@ -146,7 +146,7 @@ export const sponsorService = {
 
   // Update catalog filter settings (allowed categories)
   updateCatalogFilters: async (allowedCategories) => {
-    const response = await api.post('/sponsor/catalog/filters', {
+    const response = await api.put('/sponsor/catalog/filters', {
       allowed_categories: allowedCategories,
     });
     return response.data;
@@ -234,6 +234,7 @@ export const alertService = {
   },
 };
 
+// UPDATE FOR apiService.js - Add this to the existing orderService object
 export const orderService = {
   // Get orders (role-aware: drivers see their orders, sponsors see drivers' orders, admins see all)
   getOrders: async (filters = {}) => {
@@ -254,9 +255,9 @@ export const orderService = {
     return response.data;
   },
 
-  // Cancel an order (available for PENDING or PROCESSING orders)
-  cancelOrder: async (orderId) => {
-    const response = await api.post(`/orders/${orderId}/cancel`);
+  // Cancel an order (available for PENDING orders only)
+  cancelOrder: async (orderId, reason = 'Cancelled by user') => {
+    const response = await api.post(`/orders/${orderId}/cancel`, { reason });
     return response.data;
   },
 
@@ -266,9 +267,111 @@ export const orderService = {
     return response.data;
   },
 
-  // Update order status (admin only)
+  // Update order status (admin and sponsor only)
   updateOrderStatus: async (orderId, status) => {
     const response = await api.put(`/orders/${orderId}/status`, { status });
+    return response.data;
+  },
+};
+
+export const reportService = {
+  // Admin Reports
+  getSalesReport: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append('start_date', filters.startDate);
+    if (filters.endDate) params.append('end_date', filters.endDate);
+    if (filters.sponsorId) params.append('sponsor_id', filters.sponsorId);
+    if (filters.viewType) params.append('view_type', filters.viewType);
+
+    const response = await api.get(`/admin/reports/sales?${params.toString()}`);
+    return response.data;
+  },
+
+  getDriversReport: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append('start_date', filters.startDate);
+    if (filters.endDate) params.append('end_date', filters.endDate);
+    if (filters.sponsorId) params.append('sponsor_id', filters.sponsorId);
+
+    const response = await api.get(`/admin/reports/drivers?${params.toString()}`);
+    return response.data;
+  },
+
+  getSponsorsReport: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append('start_date', filters.startDate);
+    if (filters.endDate) params.append('end_date', filters.endDate);
+
+    const response = await api.get(`/admin/reports/sponsors?${params.toString()}`);
+    return response.data;
+  },
+
+  getSalesByDriverReport: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append('start_date', filters.startDate);
+    if (filters.endDate) params.append('end_date', filters.endDate);
+    if (filters.sponsorId) params.append('sponsor_id', filters.sponsorId);
+    if (filters.driverId) params.append('driver_id', filters.driverId);
+    if (filters.viewType) params.append('view_type', filters.viewType);
+
+    const response = await api.get(`/admin/reports/sales-by-driver?${params.toString()}`);
+    return response.data;
+  },
+
+  getInvoiceReport: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append('start_date', filters.startDate);
+    if (filters.endDate) params.append('end_date', filters.endDate);
+    if (filters.sponsorId) params.append('sponsor_id', filters.sponsorId);
+    if (filters.feeRate) params.append('fee_rate', filters.feeRate);
+
+    const response = await api.get(`/admin/reports/invoice?${params.toString()}`);
+    return response.data;
+  },
+
+  getAuditLogReport: async (filters = {}, role = 'admin') => {
+  const params = new URLSearchParams();
+  if (filters.startDate) params.append('start_date', filters.startDate);
+  if (filters.endDate) params.append('end_date', filters.endDate);
+  if (filters.category) params.append('category', filters.category);
+  
+  if (role === 'admin' && filters.sponsorId) {
+    params.append('sponsor_id', filters.sponsorId);
+  }
+
+  const endpoint = role === 'admin' ? '/admin/reports/audit-log' : '/sponsor/reports/audit-log';
+  const response = await api.get(`${endpoint}?${params.toString()}`);
+  return response.data;
+},
+
+
+  // Sponsor Reports (for future implementation)
+  getSponsorDriversReport: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append('start_date', filters.startDate);
+    if (filters.endDate) params.append('end_date', filters.endDate);
+    if (filters.driverId) params.append('driver_id', filters.driverId);
+
+    const response = await api.get(`/sponsor/reports/drivers?${params.toString()}`);
+    return response.data;
+  },
+
+  getSponsorPointsReport: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append('start_date', filters.startDate);
+    if (filters.endDate) params.append('end_date', filters.endDate);
+    if (filters.driverId) params.append('driver_id', filters.driverId);
+    
+    const response = await api.get(`/sponsor/reports/points?${params.toString()}`);
+    return response.data;
+  },
+
+  getSponsorOrdersReport: async (filters = {}) => {
+    const params = new URLSearchParams();
+    if (filters.startDate) params.append('start_date', filters.startDate);
+    if (filters.endDate) params.append('end_date', filters.endDate);
+
+    const response = await api.get(`/sponsor/reports/orders?${params.toString()}`);
     return response.data;
   },
 };
