@@ -414,7 +414,7 @@ def cancel_order(order_id):
         
         # Create alert for driver
         cur.execute("""
-            INSERT INTO driver_alerts (driver_id, alert_type_id, message, is_read, created_at)
+            INSERT INTO alerts (driver_id, alert_type_id, message, is_read, created_at)
             VALUES (%s, 2, %s, 0, NOW())
         """, (
             order['driver_id'],
