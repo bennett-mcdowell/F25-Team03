@@ -171,12 +171,6 @@ export const sponsorService = {
     const response = await api.post('/sponsor/users', userData);
     return response.data;
   },
-
-  // Get commission summary and transaction history
-  getCommissionSummary: async () => {
-    const response = await api.get('/sponsor/commission-summary');
-    return response.data;
-  },
 };
 
 export const driverService = {
