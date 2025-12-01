@@ -334,3 +334,218 @@ def update_catalog_filters():
         if cur:
             cur.close()
         conn.close()
+@sponsor_bp.route("/api/sponsor/commission-summary", methods=["GET"])
+@token_required
+def get_commission_summary():
+    """
+    Get commission summary for the logged-in sponsor:
+    - Total purchases made by drivers (points redeemed)
+    - Total points awarded
+    - Number of active drivers
+    - Commission owed to development company (1% of total sales)
+    
+    Note: Commission is calculated as points_spent × point_value × 0.01
+    Default point value is $0.01, so 100 points = $1.00, commission = $0.01
+    """
+    sponsor_user_id = _claims_user_id()
+    if not sponsor_user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # Get sponsor_id and point_value (default to 0.01 if not set)
+        cur.execute(
+            "SELECT sponsor_id, COALESCE(point_value, 0.01) as point_value FROM sponsor WHERE user_id = %s",
+            (sponsor_user_id,)
+        )
+        sponsor = cur.fetchone()
+        if not sponsor:
+            return jsonify({"error": "Forbidden: not a sponsor"}), 403
+        
+        sponsor_id = sponsor["sponsor_id"]
+        point_value = float(sponsor.get("point_value", 0.01))  # Default $0.01 per point
+
+        # Get all transactions for this sponsor's drivers
+        cur.execute(
+            """
+            SELECT 
+                t.transaction_id,
+                t.date,
+                t.amount,
+                t.item_id,
+                u.first_name,
+                u.last_name,
+                d.driver_id
+            FROM transactions t
+            INNER JOIN driver_sponsor ds ON t.driver_sponsor_id = ds.driver_sponsor_id
+            INNER JOIN driver d ON ds.driver_id = d.driver_id
+            INNER JOIN `user` u ON d.user_id = u.user_id
+            WHERE ds.sponsor_id = %s
+              AND ds.status = 'ACTIVE'
+            ORDER BY t.date DESC
+            """,
+            (sponsor_id,)
+        )
+        
+        transactions = cur.fetchall() or []
+
+        # Calculate summary metrics
+        total_points_redeemed = 0.0  # Points spent on purchases (negative transactions)
+        total_points_awarded = 0.0   # Points given to drivers (positive transactions)
+        purchase_count = 0
+        
+        for txn in transactions:
+            amount = float(txn["amount"])
+            if amount < 0:
+                # This is a purchase/redemption
+                total_points_redeemed += abs(amount)
+                purchase_count += 1
+            else:
+                # This is points being awarded
+                total_points_awarded += amount
+
+        # Calculate dollar values and commission
+        total_sales_dollars = total_points_redeemed * point_value
+        commission_rate = 0.01  # 1% commission to development company
+        commission_owed = total_sales_dollars * commission_rate
+
+        # Get active driver count
+        cur.execute(
+            """
+            SELECT COUNT(DISTINCT driver_id) as active_count
+            FROM driver_sponsor
+            WHERE sponsor_id = %s
+              AND status = 'ACTIVE'
+            """,
+            (sponsor_id,)
+        )
+        driver_count_row = cur.fetchone()
+        active_drivers = int(driver_count_row["active_count"]) if driver_count_row else 0
+
+        # Format transaction history
+        transaction_history = []
+        for txn in transactions:
+            amount = float(txn["amount"])
+            transaction_history.append({
+                "transaction_id": txn["transaction_id"],
+                "date": txn["date"].isoformat() if txn["date"] else None,
+                "driver_name": f"{txn['first_name']} {txn['last_name']}",
+                "driver_id": txn["driver_id"],
+                "points": abs(amount),
+                "dollar_value": abs(amount) * point_value,
+                "item_id": txn["item_id"],
+                "type": "purchase" if amount < 0 else "award"
+            })
+
+        return jsonify({
+            "summary": {
+                "total_points_redeemed": round(total_points_redeemed, 2),
+                "total_points_awarded": round(total_points_awarded, 2),
+                "total_sales_dollars": round(total_sales_dollars, 2),
+                "purchase_count": purchase_count,
+                "active_drivers": active_drivers,
+                "commission_owed": round(commission_owed, 2),
+                "commission_rate": commission_rate,
+                "point_value": point_value
+            },
+            "transactions": transaction_history
+        }), 200
+
+    except mysql.connector.Error as e:
+        return jsonify({"error": "DB error", "details": str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        conn.close()
+
+
+@sponsor_bp.route("/api/sponsor/driver/<int:driver_id>/purchase-history", methods=["GET"])
+@token_required
+def get_driver_purchase_history(driver_id):
+    """
+    Get purchase history for a specific driver under this sponsor
+    """
+    sponsor_user_id = _claims_user_id()
+    if not sponsor_user_id:
+        return jsonify({"error": "Unauthorized"}), 401
+
+    conn = get_db_connection()
+    cur = None
+    try:
+        cur = conn.cursor(dictionary=True)
+
+        # Get sponsor_id and point_value
+        cur.execute(
+            "SELECT sponsor_id, COALESCE(point_value, 0.01) as point_value FROM sponsor WHERE user_id = %s",
+            (sponsor_user_id,)
+        )
+        sponsor = cur.fetchone()
+        if not sponsor:
+            return jsonify({"error": "Forbidden: not a sponsor"}), 403
+        
+        sponsor_id = sponsor["sponsor_id"]
+        point_value = float(sponsor.get("point_value", 0.01))
+
+        # Verify driver is associated with this sponsor
+        cur.execute(
+            """
+            SELECT driver_sponsor_id
+            FROM driver_sponsor
+            WHERE driver_id = %s
+              AND sponsor_id = %s
+              AND status = 'ACTIVE'
+            """,
+            (driver_id, sponsor_id)
+        )
+        
+        if not cur.fetchone():
+            return jsonify({"error": "Driver not found or not associated with this sponsor"}), 404
+
+        # Get transactions for this driver-sponsor pair
+        cur.execute(
+            """
+            SELECT 
+                t.transaction_id,
+                t.date,
+                t.amount,
+                t.item_id
+            FROM transactions t
+            INNER JOIN driver_sponsor ds ON t.driver_sponsor_id = ds.driver_sponsor_id
+            WHERE ds.driver_id = %s
+              AND ds.sponsor_id = %s
+            ORDER BY t.date DESC
+            """,
+            (driver_id, sponsor_id)
+        )
+        
+        transactions = cur.fetchall() or []
+
+        # Format response
+        purchase_history = []
+        for txn in transactions:
+            amount = float(txn["amount"])
+            purchase_history.append({
+                "transaction_id": txn["transaction_id"],
+                "date": txn["date"].isoformat() if txn["date"] else None,
+                "points": abs(amount),
+                "dollar_value": abs(amount) * point_value,
+                "item_id": txn["item_id"],
+                "type": "purchase" if amount < 0 else "award"
+            })
+
+        return jsonify({
+            "driver_id": driver_id,
+            "transactions": purchase_history,
+            "count": len(purchase_history),
+            "point_value": point_value
+        }), 200
+
+    except mysql.connector.Error as e:
+        return jsonify({"error": "DB error", "details": str(e)}), 500
+    finally:
+        if cur:
+            cur.close()
+        conn.close()

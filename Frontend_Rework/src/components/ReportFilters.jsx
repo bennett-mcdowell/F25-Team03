@@ -21,7 +21,7 @@ const ReportFilters = ({
     endDate: '',
     driverId: 'all',
     sponsorId: 'all',
-    viewType: 'detailed', // detailed or summary
+    viewType: 'summary', // detailed or summary
     auditCategory: 'all',
   });
 
@@ -46,11 +46,10 @@ const ReportFilters = ({
 
   const auditCategories = [
     { value: 'all', label: 'All Categories' },
-    { value: 'login', label: 'Login Activity' },
-    { value: 'point_change', label: 'Point Changes' },
-    { value: 'order', label: 'Orders' },
-    { value: 'driver_status', label: 'Driver Status Changes' },
-    { value: 'account_change', label: 'Account Changes' },
+    { value: 'login_attempts', label: 'Login Attempts' },
+    { value: 'point_changes', label: 'Point Changes' },
+    { value: 'driver_applications', label: 'Driver Applications' },
+    { value: 'password_changes', label: 'Password Changes' },
   ];
 
   return (
